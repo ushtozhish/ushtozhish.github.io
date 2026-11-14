@@ -67,10 +67,11 @@
 
   <section class="panel">
     <div class="label"><span data-l="ru">Программы</span><span data-l="en">Tools</span></div>
-    <ul style="margin:0;padding-left:20px">
+    <ul id="tools" style="margin:0;padding-left:20px">
       <li><a href="https://github.com/ushtozhish/gradestream">GradeStream</a> — <span data-l="ru">показ Clean Feed клиенту на телефон по ссылке</span><span data-l="en">stream a Clean Feed to a client's phone via a link</span></li>
       <li><a href="https://github.com/ushtozhish/myobs">MyOBS</a> — <span data-l="ru">программа для прямых эфиров (в разработке)</span><span data-l="en">live production app (in development)</span></li>
     </ul>
+    <p class="note" style="margin:10px 0 0"><a href="https://github.com/ushtozhish?tab=repositories"><span data-l="ru">Все проекты на GitHub</span><span data-l="en">All projects on GitHub</span></a></p>
   </section>
 
   <p class="note">
@@ -79,7 +80,7 @@
   </p>
 </main>
 <script>
-function setLang(l){document.body.className=l;document.getElementById('b-ru').classList.toggle('on',l==='ru');document.getElementById('b-en').classList.toggle('on',l==='en');try{localStorage.setItem('lang',l)}catch(e){}}
+function setLang(l){document.body.className=l;if(typeof renderTools==='function')renderTools();document.getElementById('b-ru').classList.toggle('on',l==='ru');document.getElementById('b-en').classList.toggle('on',l==='en');try{localStorage.setItem('lang',l)}catch(e){}}
 try{var s=localStorage.getItem('lang')||((navigator.language||'').startsWith('ru')||(navigator.language||'').startsWith('kk')?'ru':'en');setLang(s)}catch(e){}
 function copyCard(){
   var num='4400430362346964', b=document.getElementById('copy');
@@ -87,6 +88,35 @@ function copyCard(){
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(num).then(done,fallback)}else{fallback()}
   function fallback(){var t=document.createElement('textarea');t.value=num;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){}document.body.removeChild(t)}
 }
+
+/* Список программ: подтягивается из публичных репозиториев GitHub автоматически.
+   Новый публичный репозиторий появится здесь сам. Русские описания — из карты ниже,
+   для остальных берётся описание (About) репозитория. Если GitHub недоступен — остаётся список выше. */
+var KNOWN={
+  'gradestream':{name:'GradeStream',ru:'показ Clean Feed клиенту на телефон по ссылке',en:"stream a Clean Feed to a client's phone via a link"},
+  'myobs':{name:'MyOBS',ru:'программа для прямых эфиров (в разработке)',en:'live production app (in development)'}
+};
+var SKIP={'ushtozhish.github.io':1};
+var repos=null;
+function renderTools(){
+  if(!repos||!repos.length)return;
+  var ul=document.getElementById('tools'),ru=document.body.className==='ru';
+  ul.textContent='';
+  repos.forEach(function(r){
+    var k=KNOWN[r.name.toLowerCase()]||{},li=document.createElement('li'),a=document.createElement('a');
+    a.href=r.html_url;a.textContent=k.name||r.name;li.appendChild(a);
+    var d=ru?(k.ru||r.description):(k.en||r.description);
+    if(d){li.appendChild(document.createTextNode(' — '+d))}
+    ul.appendChild(li);
+  });
+}
+fetch('https://api.github.com/users/ushtozhish/repos?per_page=100&sort=pushed')
+  .then(function(r){return r.ok?r.json():null})
+  .then(function(list){
+    if(!Array.isArray(list))return;
+    repos=list.filter(function(r){return !r.fork&&!r.private&&!SKIP[r.name.toLowerCase()]});
+    renderTools();
+  }).catch(function(){});
 </script>
 </body>
 </html>
