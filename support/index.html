@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Поддержи по-братски — Artem Vdovenko</title>
-<meta name="description" content="Бесплатные программы GradeStream, MyOBS и другие. Поддержи по-братски — перевод на Kaspi.">
+<title>Support the dev · Поддержи по-братски · Бауырша қолда — Artem Vdovenko</title>
+<meta name="description" content="Free tools GradeStream, MyOBS and more. Support the dev via Kaspi.">
 <style>
   :root{--bg:#0f1012;--panel:#17191c;--line:#2a2d31;--text:#e9eaec;--muted:#9aa0a6;--accent:#f14635;--ok:#2fbf71}
   *{box-sizing:border-box}
@@ -17,7 +17,7 @@
   .label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
   .card{font:600 clamp(19px,6.2vw,26px)/1.2 ui-monospace,"SF Mono",Consolas,monospace;letter-spacing:.02em;white-space:nowrap;margin:2px 0 4px;user-select:all}
   .name{color:var(--muted);font-size:14px;margin-bottom:14px}
-  button,.btn{display:block;width:100%;text-align:center;font:600 16px/1 system-ui,sans-serif;padding:15px;border-radius:3px;
+  button,.btn{display:block;width:100%;text-align:center;font:600 16px/1.2 system-ui,sans-serif;padding:15px;border-radius:3px;
        border:1px solid var(--line);background:#22252a;color:var(--text);text-decoration:none;cursor:pointer;margin-top:10px}
   .primary{background:var(--accent);border-color:var(--accent);color:#fff}
   .copied{background:var(--ok)!important;border-color:var(--ok)!important;color:#fff}
@@ -28,96 +28,160 @@
   .lang button{width:auto;display:inline-block;padding:6px 10px;font-size:13px;margin:0}
   .lang button.on{border-color:var(--accent);color:var(--accent)}
   a{color:var(--text)}
-  [data-l]{display:none} body.ru [data-l=ru],body.en [data-l=en]{display:revert}
+  [data-l]{display:none}
+  body.en [data-l=en],body.ru [data-l=ru],body.kk [data-l=kk]{display:revert}
 </style>
 </head>
-<body class="ru">
+<body class="en">
 <main>
-  <div class="lang"><button id="b-ru" class="on" onclick="setLang('ru')">RU</button><button id="b-en" onclick="setLang('en')">EN</button></div>
+  <div class="lang">
+    <button id="b-en" onclick="setLang('en')">EN</button>
+    <button id="b-ru" onclick="setLang('ru')">RU</button>
+    <button id="b-kk" onclick="setLang('kk')">KZ</button>
+  </div>
 
-  <h1><span data-l="ru">Поддержи по-братски 😊🤝</span><span data-l="en">Support the dev 😊🤝</span></h1>
+  <h1>
+    <span data-l="en">Support the dev 😊🤝</span>
+    <span data-l="ru">Поддержи по-братски 😊🤝</span>
+    <span data-l="kk">Бауырша қолда 😊🤝</span>
+  </h1>
   <p class="sub">
-    <span data-l="ru">Пользуйся на изи. Если софт реально выручил — закинь любую комфортную сумму, чтобы пилил дальше.</span>
     <span data-l="en">Use it freely. If the software really helped, chip in any amount you’re comfortable with to keep it going.</span>
+    <span data-l="ru">Пользуйся на изи. Если софт реально выручил — закинь любую комфортную сумму, чтобы пилил дальше.</span>
+    <span data-l="kk">Еркін қолдана бер. Бағдарлама шынымен көмектессе — әрі қарай жасай беруім үшін өзіңе ыңғайлы кез келген соманы жібер.</span>
   </p>
 
   <section class="panel">
     <div class="label">Kaspi Gold</div>
     <div class="card" id="card">4400 4303 6234 6964</div>
-    <div class="name"><span data-l="ru">Получатель: Артём В.</span><span data-l="en">Recipient: Artem V.</span></div>
-    <button class="primary" id="copy" onclick="copyCard()"><span data-l="ru">Скопировать номер карты</span><span data-l="en">Copy card number</span></button>
-    <a class="btn" href="https://kaspi.kz/transfers"><span data-l="ru">Открыть Kaspi → Переводы</span><span data-l="en">Open Kaspi → Transfers</span></a>
-    <p class="note" style="margin:8px 0 0" data-l="ru">⚠️ Кнопка откроет приложение Kaspi в разделе «Переводы». Там выбери «Клиенту Kaspi».</p>
+    <div class="name">
+      <span data-l="en">Recipient: Artem V.</span>
+      <span data-l="ru">Получатель: Артём В.</span>
+      <span data-l="kk">Алушы: Артём В.</span>
+    </div>
+    <button class="primary" id="copy" onclick="copyCard()">
+      <span data-l="en">Copy card number</span>
+      <span data-l="ru">Скопировать номер карты</span>
+      <span data-l="kk">Карта нөмірін көшіру</span>
+    </button>
+    <a class="btn" href="https://kaspi.kz/transfers">
+      <span data-l="en">Open Kaspi → Transfers</span>
+      <span data-l="ru">Открыть Kaspi → Переводы</span>
+      <span data-l="kk">Kaspi → Аударымдарды ашу</span>
+    </a>
     <p class="note" style="margin:8px 0 0" data-l="en">⚠️ This button opens the Kaspi app on the Transfers screen. Choose “To a Kaspi client”.</p>
+    <p class="note" style="margin:8px 0 0" data-l="ru">⚠️ Кнопка откроет приложение Kaspi в разделе «Переводы». Там выбери «Клиенту Kaspi».</p>
+    <p class="note" style="margin:8px 0 0" data-l="kk">⚠️ Батырма Kaspi қосымшасын «Аударымдар» бөлімінде ашады. Сол жерден «Kaspi клиентіне» таңда.</p>
   </section>
 
   <section class="panel">
-    <div class="label"><span data-l="ru">Как перевести</span><span data-l="en">How to send</span></div>
-    <ol data-l="ru">
-      <li>Скопируй номер карты.</li>
-      <li>Нажми «Открыть Kaspi» и выбери <b>Клиенту Kaspi</b>.</li>
-      <li>Вставь номер карты, проверь имя «Артём В.» и отправь сколько не жалко.</li>
-    </ol>
+    <div class="label">
+      <span data-l="en">How to send</span>
+      <span data-l="ru">Как перевести</span>
+      <span data-l="kk">Қалай аудару керек</span>
+    </div>
     <ol data-l="en">
       <li>Copy the card number.</li>
       <li>Tap “Open Kaspi” and choose <b>To a Kaspi client</b>.</li>
       <li>Paste the card number, check the name “Artem V.” and send what you like.</li>
     </ol>
-    <p class="note" data-l="ru">Kaspi → Kaspi без комиссии. С других банков тоже можно.</p>
+    <ol data-l="ru">
+      <li>Скопируй номер карты.</li>
+      <li>Нажми «Открыть Kaspi» и выбери <b>Клиенту Kaspi</b>.</li>
+      <li>Вставь номер карты, проверь имя «Артём В.» и отправь сколько не жалко.</li>
+    </ol>
+    <ol data-l="kk">
+      <li>Карта нөмірін көшір.</li>
+      <li>«Kaspi → Аударымдарды ашу» батырмасын бас та, <b>Kaspi клиентіне</b> таңда.</li>
+      <li>Карта нөмірін қой, «Артём В.» есімін тексер де, өзіңе ыңғайлы соманы жібер.</li>
+    </ol>
     <p class="note" data-l="en">Kaspi to Kaspi is free. Other Kazakhstan banks work too.</p>
+    <p class="note" data-l="ru">Kaspi → Kaspi без комиссии. С других банков тоже можно.</p>
+    <p class="note" data-l="kk">Kaspi → Kaspi комиссиясыз. Басқа банктерден де болады.</p>
   </section>
 
   <section class="panel">
-    <div class="label"><span data-l="ru">Программы</span><span data-l="en">Tools</span></div>
-    <ul id="tools" style="margin:0;padding-left:20px">
-      <li><a href="https://github.com/ushtozhish/gradestream">GradeStream</a> — <span data-l="ru">показ Clean Feed клиенту на телефон по ссылке</span><span data-l="en">stream a Clean Feed to a client's phone via a link</span></li>
-      <li><a href="https://github.com/ushtozhish/myobs">MyOBS</a> — <span data-l="ru">программа для прямых эфиров (в разработке)</span><span data-l="en">live production app (in development)</span></li>
-    </ul>
-    <p class="note" style="margin:10px 0 0"><a href="https://github.com/ushtozhish?tab=repositories"><span data-l="ru">Все проекты на GitHub</span><span data-l="en">All projects on GitHub</span></a></p>
+    <div class="label">
+      <span data-l="en">Tools</span>
+      <span data-l="ru">Программы</span>
+      <span data-l="kk">Бағдарламалар</span>
+    </div>
+    <ul id="tools" style="margin:0;padding-left:20px"></ul>
+    <p class="note" style="margin:10px 0 0"><a href="https://github.com/ushtozhish?tab=repositories">
+      <span data-l="en">All projects on GitHub</span>
+      <span data-l="ru">Все проекты на GitHub</span>
+      <span data-l="kk">GitHub-тағы барлық жобалар</span>
+    </a></p>
   </section>
 
   <p class="note">
-    <span data-l="ru">Перевод добровольный и безвозмездный — подарок. Взамен ничего не даётся, программы бесплатны для всех.</span>
     <span data-l="en">A voluntary gift. Nothing in return, the tools stay free for everyone.</span>
+    <span data-l="ru">Перевод добровольный и безвозмездный — подарок. Взамен ничего не даётся, программы бесплатны для всех.</span>
+    <span data-l="kk">Аударым ерікті және өтеусіз — бұл сыйлық. Орнына ештеңе берілмейді, бағдарламалар барлығына тегін.</span>
   </p>
 </main>
 <script>
-function setLang(l){document.body.className=l;if(typeof renderTools==='function')renderTools();document.getElementById('b-ru').classList.toggle('on',l==='ru');document.getElementById('b-en').classList.toggle('on',l==='en');try{localStorage.setItem('lang',l)}catch(e){}}
-try{var s=localStorage.getItem('lang')||((navigator.language||'').startsWith('ru')||(navigator.language||'').startsWith('kk')?'ru':'en');setLang(s)}catch(e){}
-function copyCard(){
-  var num='4400430362346964', b=document.getElementById('copy');
-  function done(){b.classList.add('copied');var o=b.innerHTML;b.innerHTML=document.body.className==='ru'?'Скопировано ✓':'Copied ✓';setTimeout(function(){b.classList.remove('copied');b.innerHTML=o},2000)}
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(num).then(done,fallback)}else{fallback()}
-  function fallback(){var t=document.createElement('textarea');t.value=num;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){}document.body.removeChild(t)}
-}
+var LANGS=['en','ru','kk'];
+var COPIED={en:'Copied ✓',ru:'Скопировано ✓',kk:'Көшірілді ✓'};
 
 /* Список программ: подтягивается из публичных репозиториев GitHub автоматически.
-   Новый публичный репозиторий появится здесь сам. Русские описания — из карты ниже,
-   для остальных берётся описание (About) репозитория. Если GitHub недоступен — остаётся список выше. */
+   Новый публичный репозиторий появится здесь сам. Описания на трёх языках — из карты ниже,
+   для остальных берётся описание (About) репозитория. Если GitHub недоступен — показываются известные программы. */
 var KNOWN={
-  'gradestream':{name:'GradeStream',ru:'показ Clean Feed клиенту на телефон по ссылке',en:"stream a Clean Feed to a client's phone via a link"},
-  'myobs':{name:'MyOBS',ru:'программа для прямых эфиров (в разработке)',en:'live production app (in development)'}
+  'gradestream':{name:'GradeStream',
+    en:"stream a Clean Feed to a client's phone via a link",
+    ru:'показ Clean Feed клиенту на телефон по ссылке',
+    kk:'Clean Feed-ті клиенттің телефонына сілтеме арқылы көрсету'},
+  'myobs':{name:'MyOBS',
+    en:'live production app (in development)',
+    ru:'программа для прямых эфиров (в разработке)',
+    kk:'тікелей эфирге арналған бағдарлама (әзірленуде)'}
 };
+var FALLBACK=[
+  {name:'gradestream',html_url:'https://github.com/ushtozhish/gradestream'},
+  {name:'myobs',html_url:'https://github.com/ushtozhish/myobs'}
+];
 var SKIP={'ushtozhish.github.io':1};
-var repos=null;
+var repos=FALLBACK;
+
+function curLang(){return LANGS.indexOf(document.body.className)>=0?document.body.className:'en'}
 function renderTools(){
-  if(!repos||!repos.length)return;
-  var ul=document.getElementById('tools'),ru=document.body.className==='ru';
+  var ul=document.getElementById('tools'),l=curLang();
   ul.textContent='';
   repos.forEach(function(r){
     var k=KNOWN[r.name.toLowerCase()]||{},li=document.createElement('li'),a=document.createElement('a');
     a.href=r.html_url;a.textContent=k.name||r.name;li.appendChild(a);
-    var d=ru?(k.ru||r.description):(k.en||r.description);
+    var d=k[l]||k.en||r.description;
     if(d){li.appendChild(document.createTextNode(' — '+d))}
     ul.appendChild(li);
   });
 }
+function setLang(l){
+  if(LANGS.indexOf(l)<0)l='en';
+  document.body.className=l;document.documentElement.lang=l;
+  LANGS.forEach(function(x){document.getElementById('b-'+x).classList.toggle('on',x===l)});
+  renderTools();
+  try{localStorage.setItem('lang',l)}catch(e){}
+}
+(function(){
+  var s=null;try{s=localStorage.getItem('lang')}catch(e){}
+  if(!s){var n=(navigator.language||'').toLowerCase();s=n.indexOf('kk')===0?'kk':(n.indexOf('ru')===0?'ru':'en')}
+  setLang(s);
+})();
+
+function copyCard(){
+  var num='4400430362346964', b=document.getElementById('copy');
+  function done(){b.classList.add('copied');var o=b.innerHTML;b.textContent=COPIED[curLang()];setTimeout(function(){b.classList.remove('copied');b.innerHTML=o},2000)}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(num).then(done,fallback)}else{fallback()}
+  function fallback(){var t=document.createElement('textarea');t.value=num;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){}document.body.removeChild(t)}
+}
+
 fetch('https://api.github.com/users/ushtozhish/repos?per_page=100&sort=pushed')
   .then(function(r){return r.ok?r.json():null})
   .then(function(list){
     if(!Array.isArray(list))return;
-    repos=list.filter(function(r){return !r.fork&&!r.private&&!SKIP[r.name.toLowerCase()]});
-    renderTools();
+    var f=list.filter(function(r){return !r.fork&&!r.private&&!SKIP[r.name.toLowerCase()]});
+    if(f.length){repos=f;renderTools()}
   }).catch(function(){});
 </script>
 </body>
