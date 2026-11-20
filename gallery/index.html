@@ -368,7 +368,16 @@ function defaultProject(){
 }
 
 /* =============================== состояние, undo =============================== */
-let P=defaultProject();
+/* потребление проекторов в пике (нормальный режим, макс. из значений для 100–120 и 220–240 В) */
+const PWR={l690u:[415,'ProjectorCentral: 415 Вт; Epson (220–240 В): 399 Вт в пике'],l690su:[399,'Epson datasheet: 399 Вт (Normal Peak), 336 Вт обычно'],
+  l1755u:[1082,'Epson: 1082 Вт (100–120 В, Normal); datasheet 1024 Вт'],l720u:[345,'Epson datasheet: 345 Вт, эко 258 Вт'],
+  l615u:[370,'Epson: 370 Вт (Normal), 276 Вт тихий'],l610u:[370,'Epson: 370 Вт (Normal), 353 Вт при 220–240 В'],l520u:[293,'Epson: 293 Вт (Normal), 223 Вт тихий'],
+  l200f:[254,'Epson: 254 Вт (Normal), 193 Вт эко'],l255f:[254,'Epson: 254 Вт (Normal, 220–240 В), 193 Вт эко'],l200sw:[254,'Epson: 254 Вт (Normal Peak), 198 Вт обычно'],
+  '535w':[315,'Epson: 315 Вт (100–120 В), 298 Вт (220–240 В), лампа'],'435w':[332,'≈ по BrightLink 435Wi: 332 Вт (100–120 В), 316 Вт (220–240 В) — уточнить'],
+  ls500b:[381,'Epson: 381 Вт (100–120 В), 366 Вт (220–240 В)'],h923b:[381,'Epson EB-800F/805F: 381 Вт (100–120 В), 366 Вт (220–240 В)'],pg800w:[574,'ViewSonic: 574 Вт (Normal), лампа']};
+function fillWatts(lib){for(const m of lib||[])if(m.watts==null&&PWR[m.id]){m.watts=PWR[m.id][0];m.wattsSrc=PWR[m.id][1];}return lib;}
+const wattsTxt=w=>w?`${num(w)} Вт (≈${num(w/220,1)} А при 220 В)`:'не указано';
+let P=defaultProject();fillWatts(P.library);
 let SEL=null;const MSEL=new Set();let PMODE=false;let RMODE=false,RMVIEW='useful',WMODE='build';let GUEST=/guest/i.test(location.hash),BASEJ=null,LAYER_AT=0;const RM={a:null,pts:[],cur:null};let RMPREV=null,rmToastT=0;let REM={closed:false,pos:null,last:null};            // {kind:'obj'|'proj', id}
 let TOOL='select';
 let MODE='schema';
@@ -1640,7 +1649,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.24.1';let lastSelKey='';
+const APPVER='1.25.0';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
@@ -1781,7 +1790,9 @@ function projHTML(p){
   const g=projGeom(p),m=g.m,st=projStats(p),gain=P.settings.gain;
   let h=`<div class="sec"><h3>🎛 Пульт · ${esc(p.name)} <span class="sp"></span><label style="text-transform:none;letter-spacing:0;color:var(--tx2)"><input type="checkbox" data-k="on" ${p.on?'checked':''}> вкл</label></h3>
   ${projPicHTML(p)}
-  ${fr('Модель',`<select id="pModel">${P.library.map(q=>`<option value="${q.id}" ${q.id===p.lib?'selected':''}>${esc(q.name)}</option>`).join('')}</select>`)}
+  ${fr('Модель',`<select id="pModel">${P.library.map(q=>`<option value="${q.id}" ${q.id===p.lib?'selected':''}>${esc(q.name)}${q.watts?' · '+num(q.watts)+' Вт':''}</option>`).join('')}</select>`)}
+  ${(()=>{const mm=libById(p.lib),on=P.projectors.filter(q=>q.on!==false),tot=on.reduce((a,q)=>a+((libById(q.lib)||{}).watts||0),0),miss=on.filter(q=>!(libById(q.lib)||{}).watts).length;
+    return `<div class="note" style="margin:-2px 0 6px;padding:5px 8px;border-radius:6px;background:#2a2416;color:#ffd58a">⚡ Потребление в пике: <b>${wattsTxt(mm&&mm.watts)}</b><br>Все включённые проекторы (${on.length} шт): <b>${num(tot)} Вт</b> · ≈${num(tot/220,1)} А${miss?` · без данных: ${miss}`:''}</div>`;})()}
   ${(()=>{const mm=libById(p.lib),L=lensesFor(mm);const cur=p.lens||(L?L[0].id:'');
     let o=`<option value="">${L?'штатный ('+esc(L[0].id)+')':'встроенный (TR '+(mm?mm.trMin+'–'+mm.trMax:'?')+')'}</option>`;if(L)o+=L.slice(1).map(l=>`<option value="${l.id}" ${p.lens===l.id?'selected':''}>${esc(l.name)} · TR ${l.trMin}${l.trMax!==l.trMin?'–'+l.trMax:''}</option>`).join('');
     o+=`<option value="custom" ${p.lens==='custom'?'selected':''}>своя линза (ввести TR)…</option>`;
@@ -1831,7 +1842,7 @@ function projHTML(p){
     <span>Эфф. световой поток</span><span>${num(g.lm)} лм</span></div>
     <div class="note" style="margin-top:6px">Освещённость на наклонной поверхности ниже — точное значение в любой точке видно в режиме «Люксы» и при наведении курсора в 3D.</div>`;}
   h+=`</div><div class="sec"><h3>Паспорт модели</h3><div class="kv"><span>Световой поток</span><span>${num(m.lumens)} лм</span><span>TR широко–узко</span><span>${num(m.trMin,2)}–${num(m.trMax,2)}${m.digital?' (цифр.)':''}</span>
-    <span>Сдвиг V / H</span><span>±${num(m.shiftV||0,1)} / ±${num(m.shiftH||0,1)}%</span><span>Оффсет кадра</span><span>${num(m.offsetV||0,1)}%</span><span>Равномерность</span><span>${num(m.unif??100)}%</span></div>
+    <span>Сдвиг V / H</span><span>±${num(m.shiftV||0,1)} / ±${num(m.shiftH||0,1)}%</span><span>Оффсет кадра</span><span>${num(m.offsetV||0,1)}%</span><span>Равномерность</span><span>${num(m.unif??100)}%</span><span>Потребление (пик)</span><span>${wattsTxt(m.watts)}</span></div>${m.wattsSrc?`<div class="note" style="margin-top:4px">⚡ ${esc(m.wattsSrc)}</div>`:''}
     ${m.src?`<div class="note" style="margin-top:6px">Источник: ${esc(m.src)}</div>`:''}${m.assumed?`<div class="warn" style="margin-top:6px">⚠ Допущения: ${esc(m.assumed)}</div>`:''}`;
   h+=`</div><div class="sec"><h3>Размер и яркость по расстоянию</h3><table class="t"><tr><th>Расст.</th><th>Ширина (широко–узко)</th><th>лк широко</th><th>лк узко</th></tr>`;
   for(const d of [1.5,2,3,4,5,6,8,10,12,15]){const w=st?st.at(0,d*100):null,t=st?st.at(1,d*100):null;if(!w)break;
@@ -1916,7 +1927,7 @@ function libHTML(){
     h+=`<div class="libcard" data-lib="${m.id}">${fr('Название',`<input type="text" data-k="name" value="${esc(m.name)}">`)}
     <div class="fr2">${fr('Яркость',nIn('lumens',m.lumens),'лм')}${fr('Потеря на «узко»',nIn('teleLoss',m.teleLoss??0),'%')}${fr('TR мин',nIn('trMin',m.trMin,'step="0.01"'),'')}${fr('TR макс',nIn('trMax',m.trMax,'step="0.01"'),'')}
     ${fr('Разрешение Ш',nIn('resW',m.resW),'px')}${fr('Разрешение В',nIn('resH',m.resH),'px')}${fr('Сдвиг V ±',nIn('shiftV',m.shiftV),'%')}${fr('Сдвиг H ±',nIn('shiftH',m.shiftH),'%')}
-    ${fr('Оффсет кадра V',nIn('offsetV',m.offsetV||0),'%')}${fr('В наличии',nIn('count',m.count||0,'step="1" min="0"'),'шт')}</div>
+    ${fr('Оффсет кадра V',nIn('offsetV',m.offsetV||0),'%')}${fr('Мощность (пик)',nIn('watts',m.watts??''),'Вт')}${fr('В наличии',nIn('count',m.count||0,'step="1" min="0"'),'шт')}</div>
     ${fr('Зум цифровой',`<input type="checkbox" data-k="digital" ${m.digital?'checked':''}>`)}
     ${fr('Равномерность (углы)',nIn('unif',m.unif??100,'min="30" max="100"'),'%')}
     ${m.src?`<div class="note">Источник: ${esc(m.src)}</div>`:''}${m.assumed?`<div class="warn" style="margin:4px 0">⚠ ${esc(m.assumed)}</div>`:''}
@@ -1940,7 +1951,7 @@ function bindLib(B){
     <span>Освещённость при ширине ${num(W/100,2)} м</span><span>${num(m.lumens/((W/100)*(W/100/a)))} лк</span>`;};
   B.querySelectorAll('#calcM,#calcW,#calcD').forEach(e=>e.addEventListener('input',calc));calc();
 }
-const KEYMAP={name:['name','model','модель','название','наименование'],lumens:['lumens','lm','ansi','brightness','яркость','люмены','лм'],trMin:['trmin','throwmin','throw_min','tr_min','тр мин','tr мин','мин tr','минимальный tr','throw ratio min'],
+const KEYMAP={watts:['watts','power','powerw','мощность','потребление','вт'],name:['name','model','модель','название','наименование'],lumens:['lumens','lm','ansi','brightness','яркость','люмены','лм'],trMin:['trmin','throwmin','throw_min','tr_min','тр мин','tr мин','мин tr','минимальный tr','throw ratio min'],
   trMax:['trmax','throwmax','throw_max','tr_max','тр макс','tr макс','макс tr','максимальный tr','throw ratio max'],resW:['resw','width','разрешение ш','ширина px'],resH:['resh','height','разрешение в','высота px'],
   shiftV:['shiftv','vshift','lens shift v','сдвиг v','сдвиг верт'],shiftH:['shifth','hshift','lens shift h','сдвиг h','сдвиг гор'],teleLoss:['teleloss','потеря','потеря на узко'],offsetV:['offsetv','offset','оффсет'],digital:['digital','цифровой зум'],unif:['unif','uniformity','равномерность'],count:['count','qty','кол-во','количество','шт'],notes:['notes','заметки','примечание'],res:['resolution','разрешение']};
 function normRec(r){const out={};const keys=Object.keys(r);
@@ -2457,7 +2468,7 @@ function lensOpts(p){const mm=libById(p.lib),L=lensesFor(mm);let o=`<option valu
   return o+`<option value="custom" ${p.lens==='custom'?'selected':''}>своя линза…</option>`;}
 function setProjModel(p,id){p.lib=id;const L=lensesFor(libById(id));if(p.lens&&p.lens!=='custom'&&!(L&&L.some(l=>l.id===p.lens)))p.lens='';const m=modelOf(p);p.shiftV=clamp(p.shiftV||0,-(m.shiftV||0),m.shiftV||0);p.shiftH=clamp(p.shiftH||0,-(m.shiftH||0),m.shiftH||0);}
 function remoteRead(p){const g=projGeom(p),st=projStats(p),m=g.m,c=st&&st.cur;
-  const rows=[['Модель',esc(shortModel(p))],['Световой поток',`${num(g.lm)} лм${(p.power??100)<100?` (мощность ${p.power}%)`:''}${m.digital&&p.zoom>0?' · цифр. зум режет яркость':''}`],['TR сейчас',`${num(g.TR,2)} (диапазон ${num(m.trMin,2)}–${num(m.trMax,2)})`]];
+  const rows=[['Модель',esc(shortModel(p))],['Потребление (пик)',wattsTxt(m.watts)],['Световой поток',`${num(g.lm)} лм${(p.power??100)<100?` (мощность ${p.power}%)`:''}${m.digital&&p.zoom>0?' · цифр. зум режет яркость':''}`],['TR сейчас',`${num(g.TR,2)} (диапазон ${num(m.trMin,2)}–${num(m.trMax,2)})`]];
   if(c){rows.push(['До поверхности',`${num(st.D/100,2)} м`],['Картинка',`${num(c.W/100,2)} × ${num(c.H/100,2)} м`],['Освещённость, средн.',`<b style="color:${c.lux<100?'#ff6b5b':c.lux<150?'#ffd166':'#6bd36b'}">${num(c.lux)} лк</b>`],['Широко / теле',`${num(st.wide.W/100,2)} м · ${num(st.wide.lux)} лк  ↔  ${num(st.tele.W/100,2)} м · ${num(st.tele.lux)} лк`]);}
   else rows.push(['Луч','не попадает на поверхность — разверните проектор']);
   return rows.map(([k,v])=>`<div class="rr"><span>${k}</span><span>${v}</span></div>`).join('');}
@@ -3335,7 +3346,7 @@ function openHelp(sec){
 /* =============================== сохранение =============================== */
 let DBOK=false,DB=null,saveT=null,saving=false,libDirty=false,lastLibJSON='';
 function migrate(j){j.dims=j.dims||[];const d=defaultProject();j.settings={...d.settings,...(j.settings||{})};j.settings.under={...d.settings.under,...(j.settings.under||{})};
-  j.library=j.library&&j.library.length?j.library:d.library;
+  j.library=j.library&&j.library.length?j.library:d.library;fillWatts(j.library);
   if(!j.settings.ceil560){const L1=(j.levels||[]).find(l=>l.id==='L1');if(L1&&L1.height===380){L1.height=560;for(const o of j.objects||[]){if(o.level!=='L1')continue;
       if(o.type==='stair'&&o.h===380)o.h=560;if(o.type==='beam'&&o.elev===340)o.elev=520;}}j.settings.ceil560=true;}
   for(const m of defaultLibrary()){const ex=j.library.find(q=>q.id===m.id);
