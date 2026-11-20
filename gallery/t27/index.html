@@ -3342,7 +3342,7 @@ function saveNow(){clearTimeout(saveT);doSave().then(()=>toast(DESKTOP?'Прое
 function exportJSON(){saveFile(`${P.name}.json`,JSON.stringify(P,null,1));}
 function importJSON(){pickFile('.json',f=>f.text().then(t=>{try{const j=JSON.parse(t);if(!j.objects||!j.levels)throw new Error('не похоже на проект');mutate(()=>{P=migrate(j);SEL=null;});fit2D();toast('Проект открыт');}catch(e){toast('Ошибка: '+e.message);}}));}
 const MENUS={
-  file:{t:'Файл',items:[['📁 Проекты…','',projectsDlg],['＋ Новый проект…','',()=>{const n=prompt('Название нового проекта','Новый проект');if(n&&n.trim())createProject(n.trim(),false);}],'-',['Сохранить','Ctrl+S',saveNow],['Сохранить копию в файл (.json)…','Ctrl+Shift+S',exportJSON],['Открыть проект (.json)…','Ctrl+O',importJSON],'-',['Сделать файл для гостя (.html)…','',makeGuestFile],['Загрузить правки гостя (.json)…','',loadGuestEdits],'-',
+  file:{t:'Файл',items:[['📁 Проекты…','',projectsDlg],['＋ Новый проект…','',()=>askName('Название нового проекта','Новый проект',n=>createProject(n,false))],'-',['Сохранить','Ctrl+S',saveNow],['Сохранить копию в файл (.json)…','Ctrl+Shift+S',exportJSON],['Открыть проект (.json)…','Ctrl+O',importJSON],'-',['Сделать файл для гостя (.html)…','',makeGuestFile],['Загрузить правки гостя (.json)…','',loadGuestEdits],'-',
     ['Монтажная ведомость (.csv)','',()=>saveFile(`${P.name} — монтажная ведомость.csv`,'\ufeff'+projReport())],['Площади (.csv)','',()=>saveFile(`${P.name} — площади.csv`,'\ufeff'+areasCSV())],
     ['Снимок 3D…','',()=>$('#bShot').click()],['Снимок плана…','',()=>$('#bPlanPng').click()],'-',
     ['Загрузить пак проекторов…','',()=>{showTab('lib');pickFile('.json,.csv,.txt',f=>f.text().then(t=>importLib(t,f.name)));}]]},
@@ -3441,7 +3441,7 @@ async function projectsDlg(){if(GUEST||GF){toast('В гостевом режим
     <div class="row" style="margin:8px 0"><button id="pnNew" class="pri">+ Новый пустой</button><button id="pnCopy">+ Копия текущего</button></div>
     <table class="t" style="width:100%">${L.map(row).join('')}</table><div class="row" style="margin-top:10px"><button id="no">Закрыть</button></div>`,()=>{
     $('#no').onclick=closeModal;
-    const ask=(title,def,cb)=>{const n=prompt(title,def);if(n&&n.trim())cb(n.trim());};
+    const ask=(title,def,cb)=>askName(title,def,cb,projectsDlg);
     $('#pnNew').onclick=()=>ask('Название нового проекта','Новый проект',n=>createProject(n,false));
     $('#pnCopy').onclick=()=>ask('Название копии',P.name+' (копия)',n=>createProject(n,true));
     document.querySelectorAll('[data-po]').forEach(b=>b.onclick=()=>openProject(b.dataset.po));
@@ -3449,6 +3449,7 @@ async function projectsDlg(){if(GUEST||GF){toast('В гостевом режим
     document.querySelectorAll('[data-pc]').forEach(b=>b.onclick=async()=>{const q=L.find(x=>x.id===b.dataset.pc);ask('Название копии',q.name+' (копия)',async n=>{try{let j;if(q.id===CURP)j=deep(P);else{const d=await stGet(q.id);if(!d||!d.json)throw new Error('нет данных');j=JSON.parse(d.json);}j.name=n;const id=uid('pr'),t=Date.now();await stPut(id,JSON.stringify(j),t,n);L.push({id,name:n,savedAt:t});await idxSave();projectsDlg();toast('Копия создана');}catch(e){toast('Ошибка: '+e.message,5000);}});});
     document.querySelectorAll('[data-pd]').forEach(b=>b.onclick=()=>{const q=L.find(x=>x.id===b.dataset.pd);openModal(`<h2>Удалить проект?</h2><div class="note">Проект «${esc(q.name)}» будет удалён${stMode()==='disk'?' (резервная копия останется в папке backups)':''}. Остальные проекты не изменятся.</div><div class="row"><button class="danger" id="ok">Удалить</button><button id="no">Отмена</button></div>`,()=>{$('#no').onclick=projectsDlg;$('#ok').onclick=async()=>{try{await stDel(q.id);PIDX=L.filter(x=>x.id!==q.id);await idxSave();toast('Проект удалён');}catch(e){toast('Ошибка: '+e.message,5000);}projectsDlg();};});});
   });}
+function askName(title,def,cb,back){openModal(`<h2>${esc(title)}</h2><input type="text" id="anIn" value="${esc(def)}" style="width:100%;font-size:15px;padding:6px"><div class="row" style="margin-top:10px"><button class="pri" id="ok">Готово</button><button id="no">Отмена</button></div>`,()=>{const i=$('#anIn');i.focus();i.select();const go=()=>{const n=i.value.trim();if(!n)return;cb(n);};$('#ok').onclick=go;i.onkeydown=e=>{if(e.key==='Enter')go();};$('#no').onclick=back||closeModal;});}
 function mutateName(n){P.name=n;changed();setCurP(CURP);const pn=$('#pName');if(pn)pn.value=n;}
 function scheduleSave(){if(VIEWONLY)return;$('#fSave').textContent='изменено…';clearTimeout(saveT);saveT=setTimeout(doSave,1200);}
 async function doSave(){
