@@ -1689,7 +1689,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.26.1';let lastSelKey='';
+const APPVER='1.27.0';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
@@ -2051,7 +2051,7 @@ function bindSettings(B){
   bindInputs(B.querySelector('#lvF'),()=>lvl());
   bindInputs(B.querySelector('#sF'),()=>P.settings);bindInputs(B.querySelector('#sF2'),()=>P.settings);bindInputs(B.querySelector('#sF3'),()=>P.settings.under);
   B.querySelector('[data-k=depthRes]').addEventListener('change',()=>{P.settings.depthRes=+P.settings.depthRes;});
-  B.querySelector('#pName').onchange=e=>mutate(()=>{P.name=e.target.value;});
+  B.querySelector('#pName').onchange=e=>{mutate(()=>{P.name=e.target.value;});setCurP(CURP);};
   B.querySelector('#bLvDel').onclick=()=>{const L=lvl();const n=P.objects.filter(o=>o.level===L.id).length+P.projectors.filter(p=>p.level===L.id).length;
     openModal(`<h2>Удалить «${esc(L.name)}»?</h2><div class="note">Вместе с ним удалится элементов: ${n}. Отменить можно через ↶.</div><div class="row"><button class="pri danger" id="ok">Удалить</button><button id="no">Отмена</button></div>`,()=>{$('#ok').onclick=()=>{closeModal();mutate(()=>{P.objects=P.objects.filter(o=>o.level!==L.id);P.projectors=P.projectors.filter(p=>p.level!==L.id);P.levels=P.levels.filter(l=>l.id!==L.id);P.activeLevel=P.levels[0].id;});};$('#no').onclick=closeModal;});};
 }
@@ -3343,7 +3343,7 @@ function saveNow(){clearTimeout(saveT);doSave().then(()=>toast(DESKTOP?'Прое
 function exportJSON(){saveFile(`${P.name}.json`,JSON.stringify(P,null,1));}
 function importJSON(){pickFile('.json',f=>f.text().then(t=>{try{const j=JSON.parse(t);if(!j.objects||!j.levels)throw new Error('не похоже на проект');mutate(()=>{P=migrate(j);SEL=null;});fit2D();toast('Проект открыт');}catch(e){toast('Ошибка: '+e.message);}}));}
 const MENUS={
-  file:{t:'Файл',items:[['Сохранить','Ctrl+S',saveNow],['Сохранить копию в файл (.json)…','Ctrl+Shift+S',exportJSON],['Открыть проект (.json)…','Ctrl+O',importJSON],'-',['Сделать файл для гостя (.html)…','',makeGuestFile],['Загрузить правки гостя (.json)…','',loadGuestEdits],'-',
+  file:{t:'Файл',items:[['📁 Проекты…','',projectsDlg],['＋ Новый проект…','',()=>askName('Название нового проекта','Новый проект',n=>createProject(n,false))],'-',['Сохранить','Ctrl+S',saveNow],['Сохранить копию в файл (.json)…','Ctrl+Shift+S',exportJSON],['Открыть проект (.json)…','Ctrl+O',importJSON],'-',['Сделать файл для гостя (.html)…','',makeGuestFile],['Загрузить правки гостя (.json)…','',loadGuestEdits],'-',
     ['Монтажная ведомость (.csv)','',()=>saveFile(`${P.name} — монтажная ведомость.csv`,'\ufeff'+projReport())],['Площади (.csv)','',()=>saveFile(`${P.name} — площади.csv`,'\ufeff'+areasCSV())],
     ['Снимок 3D…','',()=>$('#bShot').click()],['Снимок плана…','',()=>$('#bPlanPng').click()],'-',
     ['Загрузить пак проекторов…','',()=>{showTab('lib');pickFile('.json,.csv,.txt',f=>f.text().then(t=>importLib(t,f.name)));}]]},
@@ -3359,7 +3359,7 @@ const MENUS={
   help:{t:'Справка',items:[['Руководство','F1',()=>openHelp('guide')],['Горячие клавиши','',()=>openHelp('keys')],['О модели из PDF','',()=>openHelp('pdf')]]},
 };
 function buildMenus(){
-  $('#menus').innerHTML=Object.entries(MENUS).map(([k,m])=>`<div class="menu" data-m="${k}"><button class="mb">${m.t}</button><div class="dd">${m.items.map((it,i)=>(GUEST&&Array.isArray(it)&&/для гостя|правки гостя|Открыть проект|копию в файл|пак проектор|ведомость|Площади \(/.test(it[0]))?'':it==='-'?'<div class="sep"></div>':it.h?`<div class="mh">${it.h}</div>`:
+  $('#menus').innerHTML=Object.entries(MENUS).map(([k,m])=>`<div class="menu" data-m="${k}"><button class="mb">${m.t}</button><div class="dd">${m.items.map((it,i)=>(GUEST&&Array.isArray(it)&&/Проекты|Новый проект|для гостя|правки гостя|Открыть проект|копию в файл|пак проектор|ведомость|Площади \(/.test(it[0]))?'':it==='-'?'<div class="sep"></div>':it.h?`<div class="mh">${it.h}</div>`:
     `<button class="mi${it[3]&&it[3]()?' chk':''}" data-i="${i}" ${it[2]?'':'disabled'}><span>${it[0]}</span><kbd>${it[1]}</kbd></button>`).join('')}</div></div>`).join('');}
 let menuOpen=null;
 $('#menus').addEventListener('click',e=>{const mb=e.target.closest('.mb');if(mb){const m=mb.parentElement;const was=m.classList.contains('open');closeMenus();if(!was){buildMenus();const mm=$(`.menu[data-m="${m.dataset.m}"]`);mm.classList.add('open');menuOpen=m.dataset.m;}return;}
@@ -3406,34 +3406,82 @@ function migrate(j){j.dims=j.dims||[];const d=defaultProject();j.settings={...d.
   for(const p of (j.projectors||[]))if(/^ex\d$/.test(p.lib))p.lib='l690u';
   j.library=j.library.filter(m=>!/^ex\d$/.test(m.id));
   for(const p of (j.projectors||[]))if(!p.aim){const d=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(p.pitch*DEG,-(p.yaw+90)*DEG,0,'YXZ'));p.aim={x:Math.round(p.x+d.x*400),y:Math.round(p.y+d.z*400),z:Math.round(p.z+d.y*400)};p.useAim=true;}j.projectors=j.projectors||[];j.levels=j.levels&&j.levels.length?j.levels:d.levels;if(!j.levels.find(l=>l.id===j.activeLevel))j.activeLevel=j.levels[0].id;return j;}
+/* ================= несколько проектов ================= */
+let CURP=(()=>{try{return localStorage.getItem('gp_curProj')||'main';}catch(e){return 'main';}})();
+const lsKey=id=>id==='main'?'gallery3d_project':'gallery3d_project_'+id,lsAtKey=id=>id==='main'?'gallery3d_savedAt':'gallery3d_savedAt_'+id;
+const stMode=()=>DESKTOP?'disk':(DB&&DBOK&&!GUEST?'db':'local');
+async function stGet(id){const m=stMode();
+  if(m==='disk'){const r=await fetch('/api/project?id='+encodeURIComponent(id));if(r.status===404)return null;if(!r.ok)throw new Error('диск '+r.status);return await r.json();}
+  if(m==='db'){const sn=await DB.doc('projects/'+id).get();if(!sn.exists)return null;const d=sn.data();return d&&d.json?d:null;}
+  const j=localStorage.getItem(lsKey(id));return j?{json:j,savedAt:+localStorage.getItem(lsAtKey(id))||0}:null;}
+async function stPut(id,json,t,name){const m=stMode();
+  if(m==='disk'){const r=await fetch('/api/project?id='+encodeURIComponent(id),{method:'PUT',body:JSON.stringify({json,savedAt:t})});const j=await r.json();if(!j.ok)throw new Error(j.error);return;}
+  if(m==='db'){await DB.doc('projects/'+id).set({json,savedAt:t,name:name||''});return;}
+  localStorage.setItem(lsKey(id),json);localStorage.setItem(lsAtKey(id),String(t));}
+async function stDel(id){const m=stMode();if(id==='main')throw new Error('основной проект удалить нельзя');
+  if(m==='disk'){const r=await fetch('/api/project?id='+encodeURIComponent(id),{method:'DELETE'});const j=await r.json();if(!j.ok)throw new Error(j.error);return;}
+  if(m==='db'){await DB.doc('projects/'+id).set({json:null,deleted:true,savedAt:Date.now()});return;}
+  localStorage.removeItem(lsKey(id));localStorage.removeItem(lsAtKey(id));}
+let PIDX=null;
+async function idxLoad(){if(PIDX)return PIDX;let L=[];try{const d=await stGet('_index');if(d&&d.json)L=JSON.parse(d.json);}catch(e){}
+  if(!Array.isArray(L))L=[];if(!L.find(q=>q.id==='main'))L.unshift({id:'main',name:CURP==='main'?P.name:'Основной проект',savedAt:0});if(!L.find(q=>q.id===CURP))L.push({id:CURP,name:P.name,savedAt:Date.now()});PIDX=L;return L;}
+async function idxSave(){if(!PIDX)return;try{await stPut('_index',JSON.stringify(PIDX),Date.now(),'');}catch(e){console.warn('index',e);}}
+async function idxTouch(t){if(GUEST||GF)return;const L=await idxLoad();let e=L.find(q=>q.id===CURP);const ch=!e||e.name!==P.name||t-(e.savedAt||0)>5*60000;if(!e){e={id:CURP};L.push(e);}e.name=P.name;e.savedAt=t;if(ch)await idxSave();}
+function setCurP(id){CURP=id;try{localStorage.setItem('gp_curProj',id);}catch(e){}document.title=(P.name||'Проект')+' — Галерея';const tt=$('header .title');if(tt)tt.textContent=P.name||'Галерея';}
+function blankProject(name){const d=defaultProject();return{v:1,name,settings:{...deep(d.settings),under:{...deep(d.settings.under),on:false}},levels:[{id:'L1',name:'1 этаж',elev:0,height:300,floor:true,ceiling:true}],activeLevel:'L1',objects:[],projectors:[],library:deep(P.library),dims:[]};}
+async function flushSave(){clearTimeout(saveT);await doSave();}
+async function openProject(id){if(id===CURP){closeModal();return;}if(GUEST||GF)return;try{await flushSave();const d=await stGet(id);if(!d||!d.json){toast('Проект не найден',4000);return;}
+    P=migrate(JSON.parse(d.json));BASEJ=id==='main'?d.json:null;LAYER_AT=0;setCurP(id);SEL=null;hist.length=0;fut.length=0;changed();dirtySave=false;clearTimeout(saveT);fit2D();closeModal();toast('Открыт проект «'+P.name+'»',3000);$('#fSave').textContent='проект «'+P.name+'»';}
+  catch(e){toast('Не удалось открыть проект: '+e.message,6000);}}
+async function createProject(name,copy){if(GUEST||GF)return;try{await flushSave();const L=await idxLoad();const id=uid('pr');const np=copy?deep(P):blankProject(name);np.name=name;const json=JSON.stringify(np),t=Date.now();
+    await stPut(id,json,t,name);L.push({id,name,savedAt:t});await idxSave();await openProject(id);}catch(e){toast('Не удалось создать проект: '+e.message,6000);}}
+async function projectsDlg(){if(GUEST||GF){toast('В гостевом режиме проекты недоступны');return;}const L=await idxLoad();
+  const row=q=>`<tr><td>${q.id===CURP?'<b>▶ ':''}${esc(q.name||'(без названия)')}${q.id===CURP?'</b> <span class="note">открыт</span>':''}</td><td class="note">${q.savedAt?new Date(q.savedAt).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</td>
+    <td style="white-space:nowrap">${q.id===CURP?'':`<button data-po="${q.id}" class="pri">Открыть</button>`}<button data-pr="${q.id}">✎</button><button data-pc="${q.id}" title="Сделать копию">⧉</button>${q.id==='main'||q.id===CURP?'':`<button data-pd="${q.id}" class="danger" title="Удалить">🗑</button>`}</td></tr>`;
+  openModal(`<h2>📁 Проекты</h2><div class="note">Где хранятся: ${stMode()==='disk'?'на диске компьютера (папка программы)':stMode()==='db'?'в артефакте':'в этом браузере'}. Каждый проект сохраняется отдельно, переключение не трогает другие проекты.</div>
+    <div class="row" style="margin:8px 0"><button id="pnNew" class="pri">+ Новый пустой</button><button id="pnCopy">+ Копия текущего</button></div>
+    <table class="t" style="width:100%">${L.map(row).join('')}</table><div class="row" style="margin-top:10px"><button id="no">Закрыть</button></div>`,()=>{
+    $('#no').onclick=closeModal;
+    const ask=(title,def,cb)=>askName(title,def,cb,projectsDlg);
+    $('#pnNew').onclick=()=>ask('Название нового проекта','Новый проект',n=>createProject(n,false));
+    $('#pnCopy').onclick=()=>ask('Название копии',P.name+' (копия)',n=>createProject(n,true));
+    document.querySelectorAll('[data-po]').forEach(b=>b.onclick=()=>openProject(b.dataset.po));
+    document.querySelectorAll('[data-pr]').forEach(b=>b.onclick=()=>{const q=L.find(x=>x.id===b.dataset.pr);ask('Новое название',q.name,async n=>{if(q.id===CURP){mutateName(n);}else{try{const d=await stGet(q.id);if(d&&d.json){const j=JSON.parse(d.json);j.name=n;await stPut(q.id,JSON.stringify(j),Date.now(),n);}}catch(e){toast('Ошибка: '+e.message);return;}}q.name=n;await idxSave();projectsDlg();});});
+    document.querySelectorAll('[data-pc]').forEach(b=>b.onclick=async()=>{const q=L.find(x=>x.id===b.dataset.pc);ask('Название копии',q.name+' (копия)',async n=>{try{let j;if(q.id===CURP)j=deep(P);else{const d=await stGet(q.id);if(!d||!d.json)throw new Error('нет данных');j=JSON.parse(d.json);}j.name=n;const id=uid('pr'),t=Date.now();await stPut(id,JSON.stringify(j),t,n);L.push({id,name:n,savedAt:t});await idxSave();projectsDlg();toast('Копия создана');}catch(e){toast('Ошибка: '+e.message,5000);}});});
+    document.querySelectorAll('[data-pd]').forEach(b=>b.onclick=()=>{const q=L.find(x=>x.id===b.dataset.pd);openModal(`<h2>Удалить проект?</h2><div class="note">Проект «${esc(q.name)}» будет удалён${stMode()==='disk'?' (резервная копия останется в папке backups)':''}. Остальные проекты не изменятся.</div><div class="row"><button class="danger" id="ok">Удалить</button><button id="no">Отмена</button></div>`,()=>{$('#no').onclick=projectsDlg;$('#ok').onclick=async()=>{try{await stDel(q.id);PIDX=L.filter(x=>x.id!==q.id);await idxSave();toast('Проект удалён');}catch(e){toast('Ошибка: '+e.message,5000);}projectsDlg();};});});
+  });}
+function askName(title,def,cb,back){openModal(`<h2>${esc(title)}</h2><input type="text" id="anIn" value="${esc(def)}" style="width:100%;font-size:15px;padding:6px"><div class="row" style="margin-top:10px"><button class="pri" id="ok">Готово</button><button id="no">Отмена</button></div>`,()=>{const i=$('#anIn');i.focus();i.select();const go=()=>{const n=i.value.trim();if(!n)return;cb(n);};$('#ok').onclick=go;i.onkeydown=e=>{if(e.key==='Enter')go();};$('#no').onclick=back||closeModal;});}
+function mutateName(n){P.name=n;changed();setCurP(CURP);const pn=$('#pName');if(pn)pn.value=n;}
 function scheduleSave(){if(VIEWONLY)return;$('#fSave').textContent='изменено…';clearTimeout(saveT);saveT=setTimeout(doSave,1200);}
 async function doSave(){
   const json=JSON.stringify(P),t=Date.now();
   if(DESKTOP&&!diskReady){scheduleSave();return;}
-  if(DESKTOP){try{const r=await fetch('/api/project',{method:'PUT',body:JSON.stringify({json,savedAt:t})});const j=await r.json();if(!j.ok)throw new Error(j.error);$('#fSave').textContent='сохранено на диск '+new Date(t).toLocaleTimeString('ru-RU');}
+  if(DESKTOP){try{const r=await fetch('/api/project?id='+encodeURIComponent(CURP),{method:'PUT',body:JSON.stringify({json,savedAt:t})});const j=await r.json();if(!j.ok)throw new Error(j.error);$('#fSave').textContent='сохранено на диск '+new Date(t).toLocaleTimeString('ru-RU');idxTouch(t);}
     catch(e){$('#fSave').textContent='ошибка сохранения на диск';}dirtySave=false;return;}
-  try{localStorage.setItem('gallery3d_project',json);localStorage.setItem('gallery3d_savedAt',String(t));}catch(e){}
+  if(!GF)try{localStorage.setItem(lsKey(CURP),json);localStorage.setItem(lsAtKey(CURP),String(t));}catch(e){}
   if(GF){try{localStorage.setItem('gp_guest_layer_'+GF.made,JSON.stringify(buildLayer()));$('#fSave').textContent='сохранено в этом браузере '+new Date(t).toLocaleTimeString('ru-RU')+' · чтобы передать — кнопка «📤 Отправить правки»';}catch(e){}dirtySave=false;return;}
   if(DB&&!saving&&GUEST){saving=true;try{await DB.doc('layers/guest').set(buildLayer());$('#fSave').textContent='ваши правки сохранены '+new Date(t).toLocaleTimeString('ru-RU');}catch(e){$('#fSave').textContent='гостевой доступ только для просмотра — правки сохраняются лишь в этом браузере';}finally{saving=false;}dirtySave=false;return;}
   if(DB&&!DBOK){$('#fSave').textContent='⚠ проект из артефакта не загружен — сохранение выключено, обновите страницу';dirtySave=false;return;}
-  if(DB&&!saving){saving=true;try{await DB.doc('projects/main').set({json,savedAt:t,name:P.name});BASEJ=json;
-      if(LAYER_AT){try{const ls=await DB.doc('layers/guest').get();if(ls.exists&&(ls.data().savedAt||0)===LAYER_AT){await DB.doc('layers/guest').set({savedAt:0});LAYER_AT=0;}else if(ls.exists)toast('Гость внёс новые правки — обновите страницу, чтобы их увидеть',5000);}catch(e){}}
+  if(DB&&!saving){saving=true;try{await DB.doc('projects/'+CURP).set({json,savedAt:t,name:P.name});if(CURP==='main')BASEJ=json;idxTouch(t);
+      if(CURP==='main'&&LAYER_AT){try{const ls=await DB.doc('layers/guest').get();if(ls.exists&&(ls.data().savedAt||0)===LAYER_AT){await DB.doc('layers/guest').set({savedAt:0});LAYER_AT=0;}else if(ls.exists)toast('Гость внёс новые правки — обновите страницу, чтобы их увидеть',5000);}catch(e){}}
       const lj=JSON.stringify(P.library);if(lj!==lastLibJSON){await DB.doc('library/projectors').set({items:P.library,savedAt:t});lastLibJSON=lj;}
       $('#fSave').textContent='сохранено в артефакте '+new Date(t).toLocaleTimeString('ru-RU');}
     catch(e){$('#fSave').textContent='сохранено в браузере (артефакт: '+(e.code||'ошибка')+')';}finally{saving=false;}}
-  else $('#fSave').textContent='сохранено в браузере '+new Date(t).toLocaleTimeString('ru-RU');
+  else{$('#fSave').textContent='сохранено в браузере '+new Date(t).toLocaleTimeString('ru-RU');if(!DB&&!GF)idxTouch(t);}
   dirtySave=false;}
-function loadLocal(){try{const s=localStorage.getItem('gallery3d_project');if(s){P=migrate(JSON.parse(s));return +localStorage.getItem('gallery3d_savedAt')||0;}}catch(e){}return 0;}
+function loadLocal(){try{let s=localStorage.getItem(lsKey(CURP));if(!s&&CURP!=='main'&&!DESKTOP){CURP='main';s=localStorage.getItem(lsKey('main'));}if(s){P=migrate(JSON.parse(s));return +localStorage.getItem(lsAtKey(CURP))||0;}}catch(e){}return 0;}
 async function initCaps(localAt){
-  if(DESKTOP){try{const r=await fetch('/api/project');if(r.ok){const d=await r.json();if(d&&d.json){P=migrate(JSON.parse(d.json));SEL=null;changed();fit2D();}diskReady=true;$('#fSave').textContent='проект хранится на диске';}else throw new Error(r.status);}catch(e){$('#fSave').textContent='⚠ проект с диска не прочитан — сохранение выключено, перезапустите программу';toast('⚠ Не удалось прочитать проект с диска. Чтобы не затереть его, сохранение выключено — перезапустите программу',9000);}setInterval(()=>fetch('/api/ping').catch(()=>{}),5000);fetch('/api/ping').catch(()=>{});return;}
+  if(DESKTOP){try{let r=await fetch('/api/project?id='+encodeURIComponent(CURP));if(r.status===404&&CURP!=='main'){CURP='main';r=await fetch('/api/project?id=main');}if(r.ok){const d=await r.json();if(d&&d.json){P=migrate(JSON.parse(d.json));SEL=null;changed();fit2D();}diskReady=true;setCurP(CURP);$('#fSave').textContent='проект хранится на диске';}else if(r.status===404){diskReady=true;setCurP(CURP);$('#fSave').textContent='новый проект — сохраняется на диск';}else throw new Error(r.status);}catch(e){$('#fSave').textContent='⚠ проект с диска не прочитан — сохранение выключено, перезапустите программу';toast('⚠ Не удалось прочитать проект с диска. Чтобы не затереть его, сохранение выключено — перезапустите программу',9000);}setInterval(()=>fetch('/api/ping').catch(()=>{}),5000);fetch('/api/ping').catch(()=>{});return;}
   if(typeof claude==='undefined'||!claude.use)return;
   claude.use('downloads').then(d=>{DL=d;}).catch(()=>{});
   try{const db=await claude.use('db');if(!db)return;DB=db;
     const to=new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),10000));
-    let snap;try{snap=await Promise.race([db.doc('projects/main').get(),to]);}catch(e){toast('⚠ Не удалось загрузить проект из артефакта. Чтобы не затереть его, сохранение выключено — обновите страницу',10000);$('#fSave').textContent='⚠ сохранение выключено — обновите страницу';return;}DBOK=true;
+    try{const u0=await claude.use('user');if(u0&&typeof u0.canEdit==='function'&&!(await u0.canEdit()))CURP='main';}catch(e){}
+    let snap;try{snap=await Promise.race([db.doc('projects/'+CURP).get(),to]);if(CURP!=='main'&&(!snap.exists||!(snap.data()||{}).json)){CURP='main';snap=await Promise.race([db.doc('projects/main').get(),to]);}}catch(e){toast('⚠ Не удалось загрузить проект из артефакта. Чтобы не затереть его, сохранение выключено — обновите страницу',10000);$('#fSave').textContent='⚠ сохранение выключено — обновите страницу';return;}DBOK=true;
     try{const u=await claude.use('user');if(u&&typeof u.canEdit==='function'&&!(await u.canEdit()))GUEST=true;}catch(e){}
-    if(snap.exists){const d=snap.data();if(d.json){BASEJ=d.json;if(GUEST||(d.savedAt||0)>localAt){P=migrate(JSON.parse(d.json));SEL=null;changed();fit2D();if(!GUEST)toast('Загружен проект, сохранённый в артефакте');}}}
-    try{const ls=await db.doc('layers/guest').get();if(ls.exists){const L=ls.data();LAYER_AT=L.savedAt||0;const n=applyLayer(L);if(n||(L.projectors&&L.projectors.length)){changed();if(!GUEST&&n)toast(`Подгружены правки гостя: ${n} — сохранятся в проект при следующем сохранении`,5000);}}}catch(e){}
+    setCurP(CURP);
+    if(snap.exists){const d=snap.data();if(d.json){if(CURP==='main')BASEJ=d.json;if(GUEST||(d.savedAt||0)>localAt){P=migrate(JSON.parse(d.json));SEL=null;changed();fit2D();if(!GUEST)toast('Загружен проект, сохранённый в артефакте');}}}
+    if(CURP==='main')try{const ls=await db.doc('layers/guest').get();if(ls.exists){const L=ls.data();LAYER_AT=L.savedAt||0;const n=applyLayer(L);if(n||(L.projectors&&L.projectors.length)){changed();if(!GUEST&&n)toast(`Подгружены правки гостя: ${n} — сохранятся в проект при следующем сохранении`,5000);}}}catch(e){}
     if(GUEST)enterGuest();
     const lib=await db.doc('library/projectors').get();
     if(lib.exists){const items=lib.data().items||[];let n=0;for(const m of items){if(!m||!m.name)continue;const ex=P.library.find(q=>q.id===m.id)||P.library.find(q=>q.name===m.name);if(ex){if(JSON.stringify(ex)!==JSON.stringify(m)){Object.assign(ex,m);n++;}}else{P.library.push({...m});n++;}}
