@@ -1546,6 +1546,7 @@ cv.addEventListener('pointerdown',e=>{
   if(TOOL==='select'){
     for(const h of handles())if(Math.hypot(h.x-x,h.y-y)<12/V.s){drag={type:'handle',h,before:snapshot(),src:deep(selObj()||selProj()),ops:opsSnap(selObj())};return;}
     const hit=hit2D(x,y);
+    if(WMODE==='dims'&&hit&&hit.kind==='dim'){const d=(P.dims||[]).find(q=>q.id===hit.id);if(d){const dmStart=(d)=>{select({kind:'dim',id:d.id});drag={type:'dimmove',id:d.id,sx:x,sy:y,o:{x1:d.x1,y1:d.y1,x2:d.x2,y2:d.y2},before:snapshot(),moved:false};draw2D();};dmStart(d);return;}}
     if(hit&&hit.sub==='poi'){select(hit);drag={type:'handle',h:{k:'poi'},before:snapshot(),src:deep(selProj())};return;}
     if(hit&&e.ctrlKey&&e.altKey){const before=snapshot();const src=hit.kind==='proj'?projById(hit.id):objById(hit.id);const c=makeCopy(src,hit.kind==='proj');select({kind:hit.kind,id:c.id});
       drag={type:'move',start:[x,y],before,src:deep(c),moved:false,copy:true};return;}
@@ -1559,7 +1560,7 @@ cv.addEventListener('pointerdown',e=>{
     drag={type:'marq',start:[x,y],cur:[x,y],add:e.ctrlKey||e.shiftKey,click:true};return;}
   if(TOOL==='gmove'){gmClick(gmSnapPlan(x,y,e),e);return;}
   if(TOOL==='aim'){const p=selProj();if(p)mutate(()=>{const z=p.aim?p.aim.z:Math.round(lvById(p.level).height/2);const s2=snapPt(x,y,e);p.aim={x:s2[0],y:s2[1],z};p.useAim=true;});else toast('Сначала выберите проектор');return;}
-  if(TOOL==='measure'){if(WMODE==='dims'&&!toolPts.length&&!e.altKey){const h=hit2D(x,y);if(h&&h.kind==='dim'){select(h);draw2D();return;}}measureClick(x,y,e);return;}
+  if(TOOL==='measure'){if(WMODE==='dims'&&!toolPts.length&&!e.altKey){for(const hh of handles())if(Math.hypot(hh.x-x,hh.y-y)<12/V.s){drag={type:'handle',h:hh,before:snapshot(),src:null,ops:null};return;}const h=hit2D(x,y);if(h&&h.kind==='dim'){const d=(P.dims||[]).find(q=>q.id===h.id);if(d){const dmStart=(d)=>{select({kind:'dim',id:d.id});drag={type:'dimmove',id:d.id,sx:x,sy:y,o:{x1:d.x1,y1:d.y1,x2:d.x2,y2:d.y2},before:snapshot(),moved:false};draw2D();};dmStart(d);return;}}}measureClick(x,y,e);return;}
   if(TOOL==='cut'){cutClick2D(x,y,e);return;}
   if(TOOL==='cutout'){cutoutClick2D(x,y);return;}
   if(TOOL==='roomAuto'){autoRoomSmart(x,y,null,null);return;}
@@ -1605,8 +1606,16 @@ cv.addEventListener('pointermove',e=>{
     else if(o){const ref=TYPES[o.type].kind==='seg'?[drag.src.x1,drag.src.y1]:TYPES[o.type].kind==='poly'?drag.src.pts[0]:[drag.src.x,drag.src.y];const kk=TYPES[o.type].kind,s=e.altKey?[r1(ref[0]+dx),r1(ref[1]+dy)]:kk==='rect'?[ref[0]+snapZ(dx),ref[1]+snapZ(dy)]:kk==='seg'?(snapCorner(ref[0]+dx,ref[1]+dy,o.id)||snapCorner(drag.src.x2+dx,drag.src.y2+dy,o.id)?.map((v,i)=>v-(i?drag.src.y2-drag.src.y1:drag.src.x2-drag.src.x1))||[ref[0]+snapZ(dx),ref[1]+snapZ(dy)]):snapPt(ref[0]+dx,ref[1]+dy,e,null,o.id);translateObj(o,drag.src,s[0]-ref[0],s[1]-ref[1]);if(!e.altKey&&o.type!=='room')snapTranslate(o,10/V.s);
       const sn=planMarkSnap([o],e);drag.link=sn;if(sn)translateObj(o,deep(o),sn.c[0],sn.c[1]);$('#hud').style.display=sn?'block':'none';if(sn)$('#hud').textContent=`🔗 к реальному замеру «${sn.d.name}» (${num(sn.d.real,1)} см) — отпустите, чтобы привязать`;}
     rebuildQ=true;panelQ=true;draw2D();return;}
+  if(drag.type==='dimmove'){const d=(P.dims||[]).find(q=>q.id===drag.id);if(!d)return;const o=drag.o;let dx=x-drag.sx,dy=y-drag.sy;if(!drag.moved&&Math.hypot(dx,dy)<3/V.s)return;drag.moved=true;
+    if(e.shiftKey){if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;}
+    let best=null;if(!e.altKey){const A=[o.x1+dx,o.y1+dy],B=[o.x2+dx,o.y2+dy],C=[[A,'A'],[B,'B']];
+      if(d.real>0){const L3=dimLen(d)||1,ux=o.x2-o.x1,uy=o.y2-o.y1,L2=Math.hypot(ux,uy)||1,k=d.real*(L2/L3)/L2,end=d.end||'B',F=end==='B'?[A[0]+ux*k,A[1]+uy*k]:[B[0]-ux*k,B[1]-uy*k];C.push([F,'F']);}
+      for(const[c,tag]of C){const sn=snapDim(c[0],c[1],{altKey:false,shiftKey:false},null);if(sn.kind!=='corner'&&sn.kind!=='face')continue;const off=[sn.p[0]-c[0],sn.p[1]-c[1]],dd=Math.hypot(off[0],off[1])+(sn.kind==='corner'?-.001:0);if(!best||dd<best.dd)best={dd,off,sn,tag};}}
+    if(best){dx+=best.off[0];dy+=best.off[1];}
+    d.x1=r1(o.x1+dx);d.y1=r1(o.y1+dy);d.x2=r1(o.x2+dx);d.y2=r1(o.y2+dy);d.refA=refAt([d.x1,d.y1]);d.refB=refAt([d.x2,d.y2]);
+    dimHover=best?best.sn:null;$('#fMsg').textContent=best?`Прилипло: ${best.tag==='F'?'точка «факт»':'конец '+(best.tag==='A'?'А':'Б')} → ${best.sn.kind==='corner'?'угол':'грань'} · Alt — без прилипания · Shift — только по оси`:'Тяните замер · Alt — без прилипания · Shift — только по оси';panelQ=true;draw2D();return;}
   if(drag.type==='handle'){const k=drag.h.k;
-    if(k==='d1'||k==='d2'){const d=selDim();if(d){const other=k==='d1'?[d.x2,d.y2]:[d.x1,d.y1],sn=snapDim(x,y,e,other);dimHover=sn;if(k==='d1'){d.x1=r1(sn.p[0]);d.y1=r1(sn.p[1]);d.refA=sn.ref;}else{d.x2=r1(sn.p[0]);d.y2=r1(sn.p[1]);d.refB=sn.ref;}panelQ=true;draw2D();}return;}
+    if(k==='d1'||k==='d2'){const d=selDim();if(d){const other=k==='d1'?[d.x2,d.y2]:[d.x1,d.y1],sn=snapDim(x,y,e,other);if(d.real>0&&!e.altKey&&sn.kind!=='corner'){const vx=sn.p[0]-other[0],vy=sn.p[1]-other[1],l=Math.hypot(vx,vy)||1;if(Math.abs(l-d.real)<10/V.s){sn.p=[other[0]+vx/l*d.real,other[1]+vy/l*d.real];sn.kind='fact';$('#fMsg').textContent='Длина прилипла к факту '+num(d.real,1)+' см · Alt — без прилипания';}}dimHover=sn;if(k==='d1'){d.x1=r1(sn.p[0]);d.y1=r1(sn.p[1]);d.refA=sn.ref;}else{d.x2=r1(sn.p[0]);d.y2=r1(sn.p[1]);d.refB=sn.ref;}panelQ=true;draw2D();}return;}
     if(p&&k==='poi'){const s2=snapPt(x,y,e);p.aim={...p.aim,x:s2[0],y:s2[1]};p.useAim=true;}
     else if(p&&k==='aim'){p.yaw=+(Math.atan2(y-p.y,x-p.x)/DEG).toFixed(1);if(!e.altKey)p.yaw=Math.round(p.yaw);}
     else if(o){
@@ -1643,6 +1652,7 @@ cv.addEventListener('pointermove',e=>{
 });
 cv.addEventListener('pointerup',e=>{
   if(e.pointerType==='touch'){TP.delete(e.pointerId);if(drag&&drag.type==='pinch'){if(TP.size===0)drag=null;return;}}
+  if(drag&&drag.type==='dimmove'){if(drag.moved){pushHist(drag.before);changed();}drag=null;dimHover=null;draw2D();return;}
   if(drag){if(drag.type==='pan'&&drag.click&&TOOL==='select')select(null);
     if(drag.type==='eres')$('#hud').style.display='none';EVS._mv=null;
     if(drag.type==='emove'){$('#hud').style.display='none';if(!drag.moved&&drag.was>=0&&drag.cands.length>1){const nx=drag.cands[(drag.was+1)%drag.cands.length];drag=null;select(nx);const o=nx.kind==='obj'?objById(nx.id):projById(nx.id);toast(`Выбран: ${o?o.name:''}`,1500);return;}}
@@ -1698,7 +1708,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.28.0';let lastSelKey='';
+const APPVER='1.28.1';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
