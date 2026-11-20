@@ -266,11 +266,6 @@ const TYPES={
   room:  {n:'Помещение (площадь)',kind:'poly',color:'#4aa3df',key:'A'},
   opening:{n:'Проём',kind:'open',color:'#202020',key:''},
 };
-const ORDER=['room','zone','elec','slab','box','cyc','cycC','model','furn','stair','frame','wall','opening','column','beam','rail','screen','cutout'];
-const TOOLS=[['select','Выбор','V'],['measure','Замер','M'],['aim','Навести проектор','T']];
-const ADD=[...Object.entries(ELEC).map(([k,E])=>['elec:'+k,E.n,k==='panel'?'▣':'⚡']),['wall','Стена','▭'],['column','Колонна','■'],['slab','Плита / перекрытие','▤'],['beam','Балка','═'],['rail','Перила','╫'],['frame','Каркас','⌗'],['screen','Экран','▯'],
-  ['door','Дверной проём','◫'],['window','Окно','⊟'],['cut','Проём в стене','⬓'],['cutout','Вырез (в любом элементе)','✂'],['cyc','Циклорама (скругление пол→стена)','◣'],['cycC','Циклорама: угол двух стен','◢'],['model','Модель из файла (OBJ)…','◆'],['box','Подиум / объём','◼'],['stair','Лестница сплошная','≡'],['stairS','Лестница ступенями','⫽'],['zone','Зона','⬚'],['projector','Проектор','◉'],
-  ['furn:table','Стол обеденный','▭'],['furn:tableRound','Стол круглый','◯'],['furn:tablePed','Стол на одной ножке','⊥'],['furn:tablePanel','Стол на двух опорах','╥'],['furn:coffee','Журнальный столик','▭'],['furn:coffeeRound','Журнальный круглый','○'],['furn:chair','Стул','⑁'],['furn:armchair','Кресло','▙'],['furn:sofa','Диван прямой','▬'],['furn:sofaL','Диван угловой','▟'],['furn:bench','Скамья','▬'],['furn:cabinet','Шкаф','▯'],['furn:shelf','Стеллаж','☰'],['furn:plant','Растение в горшке','✿'],['furn:pedestal','Постамент','▮']];
 /* электрика: точки подключения. ph — фазность, A — номинал, kW — мощность точки (1ф: 230·A, 3ф: √3·400·A) */
 const ELEC={outlet:{n:'Розетка 230 В 16 А',s:'16А',ph:1,A:16,w:10,d:6,h:10,base:30,c:'#ffcc33'},
   projOut:{n:'Розетка проектора 230 В 16 А',s:'П',ph:1,A:16,w:10,d:6,h:10,base:480,c:'#ffb020'},
@@ -280,6 +275,11 @@ const ELEC={outlet:{n:'Розетка 230 В 16 А',s:'16А',ph:1,A:16,w:10,d:6,
   cee63_3:{n:'Силовая CEE 63 А 3ф — ивент',s:'63А·3ф',ph:3,A:63,w:20,d:14,h:20,base:60,c:'#d23030'},
   panel:{n:'Электрощит',s:'Щит',ph:3,A:63,w:60,d:20,h:90,base:100,c:'#8a8f98'}};
 const elecKW=(ph,A)=>ph===3?Math.sqrt(3)*400*A/1000:230*A/1000;
+const ORDER=['room','zone','elec','slab','box','cyc','cycC','model','furn','stair','frame','wall','opening','column','beam','rail','screen','cutout'];
+const TOOLS=[['select','Выбор','V'],['measure','Замер','M'],['aim','Навести проектор','T']];
+const ADD=[...Object.entries(ELEC).map(([k,E])=>['elec:'+k,E.n,k==='panel'?'▣':'⚡']),['wall','Стена','▭'],['column','Колонна','■'],['slab','Плита / перекрытие','▤'],['beam','Балка','═'],['rail','Перила','╫'],['frame','Каркас','⌗'],['screen','Экран','▯'],
+  ['door','Дверной проём','◫'],['window','Окно','⊟'],['cut','Проём в стене','⬓'],['cutout','Вырез (в любом элементе)','✂'],['cyc','Циклорама (скругление пол→стена)','◣'],['cycC','Циклорама: угол двух стен','◢'],['model','Модель из файла (OBJ)…','◆'],['box','Подиум / объём','◼'],['stair','Лестница сплошная','≡'],['stairS','Лестница ступенями','⫽'],['zone','Зона','⬚'],['projector','Проектор','◉'],
+  ['furn:table','Стол обеденный','▭'],['furn:tableRound','Стол круглый','◯'],['furn:tablePed','Стол на одной ножке','⊥'],['furn:tablePanel','Стол на двух опорах','╥'],['furn:coffee','Журнальный столик','▭'],['furn:coffeeRound','Журнальный круглый','○'],['furn:chair','Стул','⑁'],['furn:armchair','Кресло','▙'],['furn:sofa','Диван прямой','▬'],['furn:sofaL','Диван угловой','▟'],['furn:bench','Скамья','▬'],['furn:cabinet','Шкаф','▯'],['furn:shelf','Стеллаж','☰'],['furn:plant','Растение в горшке','✿'],['furn:pedestal','Постамент','▮']];
 const FURN={table:{n:'Стол обеденный',ft:'table',w:140,d:80,h:75,c:'#a88b6a',p:{shape:'rect',sup:'legs'}},tableRound:{n:'Стол круглый',ft:'table',w:100,d:100,h:75,c:'#a88b6a',p:{shape:'round',sup:'legs'}},tablePed:{n:'Стол на одной ножке',ft:'table',w:90,d:90,h:75,c:'#a88b6a',p:{shape:'round',sup:'ped'}},tablePanel:{n:'Стол на двух опорах',ft:'table',w:180,d:80,h:75,c:'#a88b6a',p:{shape:'rect',sup:'panel'}},coffee:{n:'Журнальный столик',ft:'table',w:100,d:55,h:42,c:'#9c7f60',p:{shape:'rect',sup:'legs'}},coffeeRound:{n:'Журнальный круглый',ft:'table',w:70,d:70,h:42,c:'#9c7f60',p:{shape:'round',sup:'ped'}},
   chair:{n:'Стул',ft:'chair',w:45,d:45,h:90,c:'#8f7558'},bench:{n:'Скамья',ft:'bench',w:150,d:40,h:45,c:'#a88b6a'},sofa:{n:'Диван прямой',ft:'sofa',w:200,d:90,h:80,c:'#6f7d8c',p:{corner:0,sd:90}},sofaL:{n:'Диван угловой',ft:'sofa',w:260,d:170,h:80,c:'#6f7d8c',p:{corner:1,sd:90}},armchair:{n:'Кресло',ft:'sofa',w:90,d:85,h:80,c:'#6f7d8c',p:{corner:0,sd:85}},
   cabinet:{n:'Шкаф',ft:'cabinet',w:100,d:45,h:200,c:'#c9b79c'},shelf:{n:'Стеллаж',ft:'shelf',w:100,d:35,h:180,c:'#b29a7a'},plant:{n:'Растение в горшке',ft:'plant',w:45,d:45,h:120,c:'#5f8f5a'},pedestal:{n:'Постамент',ft:'pedestal',w:50,d:50,h:100,c:'#e8e6e1'}};
@@ -1689,7 +1689,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.26.0';let lastSelKey='';
+const APPVER='1.26.1';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
