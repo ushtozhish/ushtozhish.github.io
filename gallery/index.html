@@ -447,6 +447,24 @@ async function makeGuestFile(){if(GUEST){guestMsg();return;}try{let src=null;
     const i=src.indexOf(MK,src.indexOf('</style>'));const out=src.slice(0,i)+inj+src.slice(i);
     await saveFile(`${P.name||'Галерея'} — для гостя.html`,new Blob([out],{type:'text/html'}));
     toast('Файл для гостя готов. Отправьте его; он открывает его двойным щелчком в браузере (нужен интернет)',7000);}catch(e){toast('Ошибка: '+e.message,5000);}}
+/* ---- облако правок гостя (Firebase Realtime Database, REST) ---- */
+const CLOUD_DEFAULT='';
+const CLOUD=((window.GUEST_FILE&&window.GUEST_FILE.cloud)||CLOUD_DEFAULT||'').replace(/\/+$/,'');
+const cloudURL=()=>CLOUD+'/gallery/layer.json';
+async function cloudGet(){if(!CLOUD)return null;const r=await fetch(cloudURL()+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('облако ответило '+r.status);const j=await r.json();return typeof j==='string'?JSON.parse(j):j;}
+async function cloudPut(L){const r=await fetch(cloudURL(),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(JSON.stringify(L))});if(!r.ok)throw new Error('облако ответило '+r.status);}
+function ownerApplyLayer(L,src){if(!L||!L.guestEdits){toast('Правок гостя нет',4000);return;}if(VLOCK){lockMsg();return;}const before=snapshot();const n=applyLayer(L);pushHist(before);changed();scheduleSave();toast(`Правки гостя загружены${src?' '+src:''}: ${n} изменений${L.projectors?`, проекторов: ${L.projectors.length}`:''}${L.savedAt?' · от '+new Date(L.savedAt).toLocaleString('ru-RU'):''}. Отменить — Ctrl+Z`,7000);}
+async function loadGuestCloud(){if(!CLOUD){toast('Облако правок ещё не подключено',4000);return;}try{ownerApplyLayer(await cloudGet(),'из облака');}catch(e){toast('Не удалось получить правки: '+e.message,5000);}}
+async function guestSend(){if(!CLOUD){guestSaveFile();return;}const L=buildLayer();L.guestEdits=1;L.from=P.name;L.made=GF.made;const b=$('#bGuestSave');b.disabled=true;b.textContent='⏳ Отправляю…';
+  try{await cloudPut(L);toast('✅ Правки отправлены. Их уже видно по ссылке для просмотра',6000);}catch(e){toast('Не получилось отправить через интернет ('+e.message+'). Сохраняю файлом — пришлите его владельцу',7000);guestSaveFile();}
+  b.disabled=false;b.textContent='📤 Отправить правки';}
+let CLOUD_AT=0;
+async function cloudPull(first){if(!CLOUD||!GF)return;let L;try{L=await cloudGet();}catch(e){if(first&&GF.view)toast('Нет связи с облаком: показан исходный проект',4000);return;}
+  if(!L||!L.guestEdits){if(first&&GF.view)$('#voBadge').textContent='👁 Только просмотр · правок пока нет';return;}
+  if(L.savedAt===CLOUD_AT)return;
+  if(!GF.view){let loc=null;try{loc=JSON.parse(localStorage.getItem('gp_guest_layer_'+GF.made)||'null');}catch(e){}if(loc&&(loc.savedAt||0)>=(L.savedAt||0)){CLOUD_AT=L.savedAt;return;}}
+  CLOUD_AT=L.savedAt;const keepSel=SEL;P=migrate(JSON.parse(GF.base));applyLayer(L);SEL=keepSel;fixSel();changed({noPanel:!first});
+  if(GF.view){$('#voBadge').textContent='👁 Только просмотр · правки от '+new Date(L.savedAt).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});if(!first)toast('Пришли новые правки — показываю',3000);}}
 function loadGuestEdits(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=()=>{const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const L=JSON.parse(String(r.result));if(!L||!L.guestEdits){toast('Это не файл правок гостя',4000);return;}
       const before=snapshot();const n=applyLayer(L);pushHist(before);changed();scheduleSave();toast(`Правки гостя загружены: ${n} изменений${L.projectors?`, проекторов в слое: ${L.projectors.length}`:''}. Отменить — Ctrl+Z`,6000);}catch(e){toast('Не удалось прочитать файл: '+e.message,5000);}};r.readAsText(f);};inp.click();}
 function guestSaveFile(){const L=buildLayer();L.guestEdits=1;L.from=P.name;saveFile(`Правки гостя — ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU').slice(0,5).replace(':','-')}.json`,new Blob([JSON.stringify(L)],{type:'application/json'}));
@@ -1622,7 +1640,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.24.0';let lastSelKey='';
+const APPVER='1.24.1';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
@@ -1967,7 +1985,7 @@ function settingsHTML(){const S=P.settings,L=lvl(),sv=lsGet('gp_startView','v3d'
   <div class="sec"><h3>Подложка PDF</h3><div id="sF3">${fr('Показывать',`<input type="checkbox" data-k="on" ${S.under.on?'checked':''}>`)}${fr('Прозрачность',`<input type="range" min="0" max="1" step="0.02" data-k="opacity" value="${S.under.opacity}">`)}
   <div class="fr2">${fr('Смещение X',nIn('x',S.under.x),'см')}${fr('Смещение Y',nIn('y',S.under.y),'см')}</div>${fr('Масштаб',nIn('scale',S.under.scale,'step="0.01"'),'см/px')}</div>
   <div class="note">Исходный план не в масштабе: подложка совпадает с моделью только местами. Нужна для сверки, не для обмера.</div></div>
-  <div class="sec"><h3>Проект</h3>${fr('Название',`<input type="text" id="pName" value="${esc(P.name)}">`)}<div class="row"><button id="bReset" class="danger">Сбросить к плану из PDF</button></div></div>`;}
+  <div class="sec"><h3>Проект</h3>${fr('Название',`<input type="text" id="pName" value="${esc(P.name)}">`)}</div>`;}
 function bindSettings(B){
   {const sv=B.querySelector('#startView');if(sv)sv.onchange=e=>{lsSet('gp_startView',e.target.value);toast('При следующем запуске откроется: '+e.target.selectedOptions[0].text);};}
   bindInputs(B.querySelector('#lvF'),()=>lvl());
@@ -1976,7 +1994,6 @@ function bindSettings(B){
   B.querySelector('#pName').onchange=e=>mutate(()=>{P.name=e.target.value;});
   B.querySelector('#bLvDel').onclick=()=>{const L=lvl();const n=P.objects.filter(o=>o.level===L.id).length+P.projectors.filter(p=>p.level===L.id).length;
     openModal(`<h2>Удалить «${esc(L.name)}»?</h2><div class="note">Вместе с ним удалится элементов: ${n}. Отменить можно через ↶.</div><div class="row"><button class="pri danger" id="ok">Удалить</button><button id="no">Отмена</button></div>`,()=>{$('#ok').onclick=()=>{closeModal();mutate(()=>{P.objects=P.objects.filter(o=>o.level!==L.id);P.projectors=P.projectors.filter(p=>p.level!==L.id);P.levels=P.levels.filter(l=>l.id!==L.id);P.activeLevel=P.levels[0].id;});};$('#no').onclick=closeModal;});};
-  B.querySelector('#bReset').onclick=()=>openModal(`<h2>Сбросить проект?</h2><div class="note">Все изменения заменятся исходной моделью из PDF. Отменить можно через ↶.</div><div class="row"><button class="pri" id="ok">Сбросить</button><button id="no">Отмена</button></div>`,()=>{$('#ok').onclick=()=>{closeModal();mutate(()=>{const lib=P.library;P=defaultProject();P.library=lib;SEL=null;});fit2D();};$('#no').onclick=closeModal;});
 }
 
 /* ----- списки слева ----- */
@@ -3135,7 +3152,7 @@ function syncWM(){document.querySelectorAll('#wmodes [data-wm]').forEach(b=>{b.c
 function setWMode(m){if(!WM[m]||(GUEST&&m==='rooms'))m=GUEST?'decor':'build';if(m!=='proj'&&PMODE)setPMode(false);if(m!=='rooms'&&RMODE)setRMode(false);WMODE=m;if(m==='proj'&&!PMODE)setPMode(true);if(m==='rooms'&&!RMODE)setRMode(true);
   if(!WM[m].tools.includes(TOOL)&&!(m==='proj'&&TOOL==='projector'))setTool('select',true);lsSet('gp_wmode',m);syncWM();}
 document.querySelectorAll('#wmodes [data-wm]').forEach(b=>b.onclick=()=>setWMode(b.dataset.wm));
-$('#bGuestSave').onclick=guestSaveFile;$('#bLock').onclick=()=>setLock(!VLOCK);if(window.GUEST_FILE)$('#bLock').style.display='none';else setTimeout(()=>setLock(true,true),0);$('#bMobSave').onclick=()=>saveNow();
+$('#bGuestSave').onclick=guestSend;$('#bLock').onclick=()=>setLock(!VLOCK);if(window.GUEST_FILE)$('#bLock').style.display='none';else setTimeout(()=>setLock(true,true),0);$('#bMobSave').onclick=()=>saveNow();
 const isMob=()=>matchMedia('(max-width:820px)').matches;
 function setHH(){document.documentElement.style.setProperty('--hh',($('header').getBoundingClientRect().height||52)+'px');}new ResizeObserver(setHH).observe($('header'));addEventListener('resize',setHH);setTimeout(setHH,300);
 function mobSync(){const b=document.body.classList;$('#mobL').textContent=b.contains('mL')?'✕':'☰';$('#mobR').textContent=b.contains('mR')?'✕':'⚙';$('#mobL').style.display=b.contains('mR')?'none':'';$('#mobR').style.display=b.contains('mL')?'none':'';setTimeout(()=>dispatchEvent(new Event('resize')),250);}
@@ -3268,8 +3285,7 @@ const MENUS={
   file:{t:'Файл',items:[['Сохранить','Ctrl+S',saveNow],['Сохранить копию в файл (.json)…','Ctrl+Shift+S',exportJSON],['Открыть проект (.json)…','Ctrl+O',importJSON],'-',['Сделать файл для гостя (.html)…','',makeGuestFile],['Загрузить правки гостя (.json)…','',loadGuestEdits],'-',
     ['Монтажная ведомость (.csv)','',()=>saveFile(`${P.name} — монтажная ведомость.csv`,'\ufeff'+projReport())],['Площади (.csv)','',()=>saveFile(`${P.name} — площади.csv`,'\ufeff'+areasCSV())],
     ['Снимок 3D…','',()=>$('#bShot').click()],['Снимок плана…','',()=>$('#bPlanPng').click()],'-',
-    ['Загрузить пак проекторов…','',()=>{showTab('lib');pickFile('.json,.csv,.txt',f=>f.text().then(t=>importLib(t,f.name)));}],'-',
-    ['Сбросить к плану из PDF…','',()=>{showTab('settings');setTimeout(()=>$('#bReset')&&$('#bReset').click(),50);}]]},
+    ['Загрузить пак проекторов…','',()=>{showTab('lib');pickFile('.json,.csv,.txt',f=>f.text().then(t=>importLib(t,f.name)));}]]},
   edit:{t:'Правка',items:[['Отменить','Ctrl+Z',undo],['Повторить','Ctrl+Shift+Z',redo],'-',['Копировать','Ctrl+C',copySel],['Вставить на то же место','Ctrl+V',pasteClip],['Дублировать','Ctrl+D',dupSel],['Удалить','Del',delSel],'-',
     ['Копию тащить: зажать Ctrl+Alt и тянуть','',null]]},
   view:{t:'Вид',items:[{h:'Окна'},['Только план 2D','',()=>setView('v2d'),()=>$('#views').classList.contains('v2d')],['План 2D + 3D','',()=>setView('split'),()=>$('#views').classList.contains('split')],['Только 3D','',()=>setView('v3d'),()=>$('#views').classList.contains('v3d')],
@@ -3317,7 +3333,7 @@ function openHelp(sec){
     ${sec==='keys'?keys:sec==='pdf'?pdf:guide}</div>`,()=>{document.querySelectorAll('[data-hs]').forEach(b=>b.onclick=()=>openHelp(b.dataset.hs));$('#hClose').onclick=closeModal;});}
 
 /* =============================== сохранение =============================== */
-let DB=null,saveT=null,saving=false,libDirty=false,lastLibJSON='';
+let DBOK=false,DB=null,saveT=null,saving=false,libDirty=false,lastLibJSON='';
 function migrate(j){j.dims=j.dims||[];const d=defaultProject();j.settings={...d.settings,...(j.settings||{})};j.settings.under={...d.settings.under,...(j.settings.under||{})};
   j.library=j.library&&j.library.length?j.library:d.library;
   if(!j.settings.ceil560){const L1=(j.levels||[]).find(l=>l.id==='L1');if(L1&&L1.height===380){L1.height=560;for(const o of j.objects||[]){if(o.level!=='L1')continue;
@@ -3337,6 +3353,7 @@ async function doSave(){
   try{localStorage.setItem('gallery3d_project',json);localStorage.setItem('gallery3d_savedAt',String(t));}catch(e){}
   if(GF){try{localStorage.setItem('gp_guest_layer_'+GF.made,JSON.stringify(buildLayer()));$('#fSave').textContent='сохранено в этом браузере '+new Date(t).toLocaleTimeString('ru-RU')+' · чтобы передать — кнопка «📤 Отправить правки»';}catch(e){}dirtySave=false;return;}
   if(DB&&!saving&&GUEST){saving=true;try{await DB.doc('layers/guest').set(buildLayer());$('#fSave').textContent='ваши правки сохранены '+new Date(t).toLocaleTimeString('ru-RU');}catch(e){$('#fSave').textContent='гостевой доступ только для просмотра — правки сохраняются лишь в этом браузере';}finally{saving=false;}dirtySave=false;return;}
+  if(DB&&!DBOK){$('#fSave').textContent='⚠ проект из артефакта не загружен — сохранение выключено, обновите страницу';dirtySave=false;return;}
   if(DB&&!saving){saving=true;try{await DB.doc('projects/main').set({json,savedAt:t,name:P.name});BASEJ=json;
       if(LAYER_AT){try{const ls=await DB.doc('layers/guest').get();if(ls.exists&&(ls.data().savedAt||0)===LAYER_AT){await DB.doc('layers/guest').set({savedAt:0});LAYER_AT=0;}else if(ls.exists)toast('Гость внёс новые правки — обновите страницу, чтобы их увидеть',5000);}catch(e){}}
       const lj=JSON.stringify(P.library);if(lj!==lastLibJSON){await DB.doc('library/projectors').set({items:P.library,savedAt:t});lastLibJSON=lj;}
@@ -3346,12 +3363,12 @@ async function doSave(){
   dirtySave=false;}
 function loadLocal(){try{const s=localStorage.getItem('gallery3d_project');if(s){P=migrate(JSON.parse(s));return +localStorage.getItem('gallery3d_savedAt')||0;}}catch(e){}return 0;}
 async function initCaps(localAt){
-  if(DESKTOP){try{const r=await fetch('/api/project');if(r.ok){const d=await r.json();if(d&&d.json){P=migrate(JSON.parse(d.json));SEL=null;changed();fit2D();}}$('#fSave').textContent='проект хранится на диске';}catch(e){$('#fSave').textContent='не удалось прочитать проект с диска';}diskReady=true;setInterval(()=>fetch('/api/ping').catch(()=>{}),5000);fetch('/api/ping').catch(()=>{});return;}
+  if(DESKTOP){try{const r=await fetch('/api/project');if(r.ok){const d=await r.json();if(d&&d.json){P=migrate(JSON.parse(d.json));SEL=null;changed();fit2D();}diskReady=true;$('#fSave').textContent='проект хранится на диске';}else throw new Error(r.status);}catch(e){$('#fSave').textContent='⚠ проект с диска не прочитан — сохранение выключено, перезапустите программу';toast('⚠ Не удалось прочитать проект с диска. Чтобы не затереть его, сохранение выключено — перезапустите программу',9000);}setInterval(()=>fetch('/api/ping').catch(()=>{}),5000);fetch('/api/ping').catch(()=>{});return;}
   if(typeof claude==='undefined'||!claude.use)return;
   claude.use('downloads').then(d=>{DL=d;}).catch(()=>{});
   try{const db=await claude.use('db');if(!db)return;DB=db;
     const to=new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),10000));
-    const snap=await Promise.race([db.doc('projects/main').get(),to]);
+    let snap;try{snap=await Promise.race([db.doc('projects/main').get(),to]);}catch(e){toast('⚠ Не удалось загрузить проект из артефакта. Чтобы не затереть его, сохранение выключено — обновите страницу',10000);$('#fSave').textContent='⚠ сохранение выключено — обновите страницу';return;}DBOK=true;
     try{const u=await claude.use('user');if(u&&typeof u.canEdit==='function'&&!(await u.canEdit()))GUEST=true;}catch(e){}
     if(snap.exists){const d=snap.data();if(d.json){BASEJ=d.json;if(GUEST||(d.savedAt||0)>localAt){P=migrate(JSON.parse(d.json));SEL=null;changed();fit2D();if(!GUEST)toast('Загружен проект, сохранённый в артефакте');}}}
     try{const ls=await db.doc('layers/guest').get();if(ls.exists){const L=ls.data();LAYER_AT=L.savedAt||0;const n=applyLayer(L);if(n||(L.projectors&&L.projectors.length)){changed();if(!GUEST&&n)toast(`Подгружены правки гостя: ${n} — сохранятся в проект при следующем сохранении`,5000);}}}catch(e){}
@@ -3366,7 +3383,7 @@ async function initCaps(localAt){
 /* =============================== старт =============================== */
 try{
   let localAt=0;
-  if(GF){GUEST=true;BASEJ=GF.base;P=migrate(JSON.parse(GF.base));if(!GF.view)try{const L=JSON.parse(localStorage.getItem('gp_guest_layer_'+GF.made)||'null');if(L)applyLayer(L);}catch(e){}if(GF.view)document.body.classList.add('viewonly');}
+  if(GF){GUEST=true;BASEJ=GF.base;P=migrate(JSON.parse(GF.base));if(!GF.view)try{const L=JSON.parse(localStorage.getItem('gp_guest_layer_'+GF.made)||'null');if(L)applyLayer(L);}catch(e){}if(GF.view)document.body.classList.add('viewonly');if(CLOUD){setTimeout(()=>cloudPull(true),700);if(GF.view)setInterval(()=>cloudPull(false),20000);}}
   else localAt=loadLocal();
   init3D();
   {let sv=lsGet('gp_startView','v3d');if(sv==='last')sv=lsGet('gp_lastView','v3d');if(!['v3d','v2d','split'].includes(sv))sv='v3d';if(matchMedia('(max-width:820px)').matches&&sv==='split')sv='v3d';setView(sv);}setMode('schema');setTool('select');
