@@ -159,7 +159,7 @@ kbd{font-family:var(--mono);font-size:11px;background:#333;border:1px solid #555
     <button id="bRedo" title="Повторить (Ctrl+Shift+Z)">↷</button>
   </div>
   <span id="voBadge">👁 Только просмотр</span><div class="grp"><button id="bLock" class="on" style="font-size:15px;min-width:34px" title="Только просмотр">🔒</button><button id="bMobSave" style="display:none;font-weight:700" title="Сохранить">💾 Сохранить</button><button id="bGuestSave" style="display:none;background:#2e7d32;color:#fff;border-color:#2e7d32;font-weight:700" title="Сохранить ваши правки в файл, чтобы отправить владельцу проекта">📤 Отправить правки</button></div>
-  <div class="grp" id="wmodes" title="Режим работы"><button data-wm="build" title="Построение помещения: стены, колонны, плиты, двери, окна, лестницы">🏗 Построение</button><button data-wm="proj" title="Расстановка и наведение проекторов (остальное заблокировано)">🎥 Проекторы</button><button data-wm="decor" title="Оформление: мебель, растения, подиумы, модели из файлов">🪑 Оформление</button><button data-wm="rooms" title="Замер помещений: площади пола, потолка, стен">📐 Помещения</button></div>
+  <div class="grp" id="wmodes" title="Режим работы"><button data-wm="build" title="Построение помещения: стены, колонны, плиты, двери, окна, лестницы">🏗 Построение</button><button data-wm="proj" title="Расстановка и наведение проекторов (остальное заблокировано)">🎥 Проекторы</button><button data-wm="decor" title="Оформление: мебель, растения, подиумы, модели из файлов">🪑 Оформление</button><button data-wm="elec" title="Электрика: розетки, силовые точки, щиты, нагрузки по группам и фазам">⚡ Электрика</button><button data-wm="rooms" title="Замер помещений: площади пола, потолка, стен">📐 Помещения</button></div>
   <div class="grp tools" id="tools"></div>
   <span style="flex:1"></span>
   <div class="grp" title="Раскладка окон">
@@ -181,7 +181,7 @@ kbd{font-family:var(--mono);font-size:11px;background:#333;border:1px solid #555
       <select id="levelSel"></select>
       <div style="margin-top:6px"><div class="note" style="margin:0 0 3px">Ставить новые элементы на:</div><select id="wfloor" title="Пол, от которого считаются высоты новых элементов. В 3D выбирается сам — по тому, куда вы кликнули (пол или верх плиты)"></select></div>
     </div>
-    <div class="sec" id="addSec"><h3 id="addTitle">Добавить элемент</h3><div class="addgrid" id="addGrid"></div><div class="note" id="addHint" style="margin-top:6px">Выберите элемент и кликните на плане или по полу в 3D.</div></div></div><div class="lscroll" id="lscroll">
+    <div class="sec" id="addSec"><h3 id="addTitle">Добавить элемент</h3><div class="addgrid" id="addGrid"></div><div class="note" id="addHint" style="margin-top:6px">Выберите элемент и кликните на плане или по полу в 3D.</div><div id="elecSum"></div></div></div><div class="lscroll" id="lscroll">
     <div class="sec" id="secProj"><h3>Проекторы <span class="sp"></span><button id="bProjRep" title="Монтажная ведомость для техников (.csv)">Ведомость</button><button id="bAddProj" title="Поставить проектор">+</button></h3><div class="list" id="projList"></div></div>
     <div class="sec"><h3>Элементы</h3><div id="objList"></div></div>
   </div></aside>
@@ -262,14 +262,24 @@ const TYPES={
   model: {n:'Модель (OBJ)',kind:'rect',color:'#e2ddd2',key:''},
   furn:  {n:'Мебель / декор',kind:'rect',color:'#a88b6a',key:''},
   zone:  {n:'Зона (разметка)',kind:'rect',color:'#e0a040',key:''},
+  elec:  {n:'Электроточка',kind:'rect',color:'#ffcc33',key:''},
   room:  {n:'Помещение (площадь)',kind:'poly',color:'#4aa3df',key:'A'},
   opening:{n:'Проём',kind:'open',color:'#202020',key:''},
 };
-const ORDER=['room','zone','slab','box','cyc','cycC','model','furn','stair','frame','wall','opening','column','beam','rail','screen','cutout'];
+const ORDER=['room','zone','elec','slab','box','cyc','cycC','model','furn','stair','frame','wall','opening','column','beam','rail','screen','cutout'];
 const TOOLS=[['select','Выбор','V'],['measure','Замер','M'],['aim','Навести проектор','T']];
-const ADD=[['wall','Стена','▭'],['column','Колонна','■'],['slab','Плита / перекрытие','▤'],['beam','Балка','═'],['rail','Перила','╫'],['frame','Каркас','⌗'],['screen','Экран','▯'],
+const ADD=[...Object.entries(ELEC).map(([k,E])=>['elec:'+k,E.n,k==='panel'?'▣':'⚡']),['wall','Стена','▭'],['column','Колонна','■'],['slab','Плита / перекрытие','▤'],['beam','Балка','═'],['rail','Перила','╫'],['frame','Каркас','⌗'],['screen','Экран','▯'],
   ['door','Дверной проём','◫'],['window','Окно','⊟'],['cut','Проём в стене','⬓'],['cutout','Вырез (в любом элементе)','✂'],['cyc','Циклорама (скругление пол→стена)','◣'],['cycC','Циклорама: угол двух стен','◢'],['model','Модель из файла (OBJ)…','◆'],['box','Подиум / объём','◼'],['stair','Лестница сплошная','≡'],['stairS','Лестница ступенями','⫽'],['zone','Зона','⬚'],['projector','Проектор','◉'],
   ['furn:table','Стол обеденный','▭'],['furn:tableRound','Стол круглый','◯'],['furn:tablePed','Стол на одной ножке','⊥'],['furn:tablePanel','Стол на двух опорах','╥'],['furn:coffee','Журнальный столик','▭'],['furn:coffeeRound','Журнальный круглый','○'],['furn:chair','Стул','⑁'],['furn:armchair','Кресло','▙'],['furn:sofa','Диван прямой','▬'],['furn:sofaL','Диван угловой','▟'],['furn:bench','Скамья','▬'],['furn:cabinet','Шкаф','▯'],['furn:shelf','Стеллаж','☰'],['furn:plant','Растение в горшке','✿'],['furn:pedestal','Постамент','▮']];
+/* электрика: точки подключения. ph — фазность, A — номинал, kW — мощность точки (1ф: 230·A, 3ф: √3·400·A) */
+const ELEC={outlet:{n:'Розетка 230 В 16 А',s:'16А',ph:1,A:16,w:10,d:6,h:10,base:30,c:'#ffcc33'},
+  projOut:{n:'Розетка проектора 230 В 16 А',s:'П',ph:1,A:16,w:10,d:6,h:10,base:480,c:'#ffb020'},
+  cee16_3:{n:'Силовая CEE 16 А 3ф (красная)',s:'16А·3ф',ph:3,A:16,w:14,d:10,h:14,base:60,c:'#ff5a4a'},
+  cee32_1:{n:'Силовая CEE 32 А 1ф (синяя)',s:'32А',ph:1,A:32,w:14,d:10,h:14,base:60,c:'#4aa3ff'},
+  cee32_3:{n:'Силовая CEE 32 А 3ф (красная) — ивент',s:'32А·3ф',ph:3,A:32,w:16,d:12,h:16,base:60,c:'#ff4a4a'},
+  cee63_3:{n:'Силовая CEE 63 А 3ф — ивент',s:'63А·3ф',ph:3,A:63,w:20,d:14,h:20,base:60,c:'#d23030'},
+  panel:{n:'Электрощит',s:'Щит',ph:3,A:63,w:60,d:20,h:90,base:100,c:'#8a8f98'}};
+const elecKW=(ph,A)=>ph===3?Math.sqrt(3)*400*A/1000:230*A/1000;
 const FURN={table:{n:'Стол обеденный',ft:'table',w:140,d:80,h:75,c:'#a88b6a',p:{shape:'rect',sup:'legs'}},tableRound:{n:'Стол круглый',ft:'table',w:100,d:100,h:75,c:'#a88b6a',p:{shape:'round',sup:'legs'}},tablePed:{n:'Стол на одной ножке',ft:'table',w:90,d:90,h:75,c:'#a88b6a',p:{shape:'round',sup:'ped'}},tablePanel:{n:'Стол на двух опорах',ft:'table',w:180,d:80,h:75,c:'#a88b6a',p:{shape:'rect',sup:'panel'}},coffee:{n:'Журнальный столик',ft:'table',w:100,d:55,h:42,c:'#9c7f60',p:{shape:'rect',sup:'legs'}},coffeeRound:{n:'Журнальный круглый',ft:'table',w:70,d:70,h:42,c:'#9c7f60',p:{shape:'round',sup:'ped'}},
   chair:{n:'Стул',ft:'chair',w:45,d:45,h:90,c:'#8f7558'},bench:{n:'Скамья',ft:'bench',w:150,d:40,h:45,c:'#a88b6a'},sofa:{n:'Диван прямой',ft:'sofa',w:200,d:90,h:80,c:'#6f7d8c',p:{corner:0,sd:90}},sofaL:{n:'Диван угловой',ft:'sofa',w:260,d:170,h:80,c:'#6f7d8c',p:{corner:1,sd:90}},armchair:{n:'Кресло',ft:'sofa',w:90,d:85,h:80,c:'#6f7d8c',p:{corner:0,sd:85}},
   cabinet:{n:'Шкаф',ft:'cabinet',w:100,d:45,h:200,c:'#c9b79c'},shelf:{n:'Стеллаж',ft:'shelf',w:100,d:35,h:180,c:'#b29a7a'},plant:{n:'Растение в горшке',ft:'plant',w:45,d:45,h:120,c:'#5f8f5a'},pedestal:{n:'Постамент',ft:'pedestal',w:50,d:50,h:100,c:'#e8e6e1'}};
@@ -456,6 +466,32 @@ async function makeGuestFile(){if(GUEST){guestMsg();return;}try{let src=null;
     const i=src.indexOf(MK,src.indexOf('</style>'));const out=src.slice(0,i)+inj+src.slice(i);
     await saveFile(`${P.name||'Галерея'} — для гостя.html`,new Blob([out],{type:'text/html'}));
     toast('Файл для гостя готов. Отправьте его; он открывает его двойным щелчком в браузере (нужен интернет)',7000);}catch(e){toast('Ошибка: '+e.message,5000);}}
+/* ================= электрика: сводка нагрузок ================= */
+function elecData(){const G=new Map(),un=[],gp=k=>{if(!G.has(k))G.set(k,{name:k,pts:[],proj:[],load:0,brk:null,ph:null});return G.get(k);};
+  const pts=P.objects.filter(o=>o.type==='elec');
+  for(const o of pts){if(o.ek==='panel')continue;if(!o.grp)continue;const g=gp(o.grp);g.pts.push(o);g.load+=+o.load||0;if(g.brk==null||(+o.brk||0)<g.brk)g.brk=+o.brk||(ELEC[o.ek]||{}).A||16;if(o.phase==='3ф')g.ph='3ф';else if(!g.ph)g.ph=o.phase||'L1';}
+  for(const p of P.projectors){if(p.on===false)continue;const w=(libById(p.lib)||{}).watts||0;if(!p.grp){un.push({p,w});continue;}const g=gp(p.grp);g.proj.push({p,w});g.load+=w;if(!g.ph&&p.phase)g.ph=p.phase;}
+  const ph={L1:0,L2:0,L3:0};
+  for(const g of G.values()){g.ph=g.ph||'L1';const three=g.ph==='3ф';g.I=three?g.load/(Math.sqrt(3)*400):g.load/230;g.cap=g.brk?elecKW(three?3:1,g.brk)*1000:null;g.k=g.cap?g.load/g.cap:null;
+    g.st=g.k==null?'—':g.k>1?'❌ перегруз':g.k>.8?'⚠ больше 80%':'✅';if(three){for(const k in ph)ph[k]+=g.load/3;}else ph[g.ph]+=g.load;}
+  for(const u of un){if(u.p.phase&&ph[u.p.phase]!=null)ph[u.p.phase]+=u.w;}
+  const projW=P.projectors.filter(p=>p.on!==false).reduce((a,p)=>a+((libById(p.lib)||{}).watts||0),0),loads=pts.reduce((a,o)=>a+(+o.load||0),0);
+  const ev=pts.filter(o=>/^cee/.test(o.ek)),evKW=ev.reduce((a,o)=>a+elecKW(o.phase==='3ф'?3:1,+o.brk||(ELEC[o.ek]||{}).A),0);
+  const mx=Math.max(ph.L1,ph.L2,ph.L3),mn=Math.min(ph.L1,ph.L2,ph.L3),imb=mx>0?(mx-mn)/mx*100:0;
+  const need=(projW+loads)/1000*1.25+evKW;
+  return{G:[...G.values()].sort((a,b)=>a.name.localeCompare(b.name,'ru')),un,ph,imb,projW,loads,ev,evKW,need,pts,panels:pts.filter(o=>o.ek==='panel')};}
+const kw=w=>num(w/1000,1)+' кВт';
+function updElecSum(){const el=$('#elecSum');if(!el)return;if(WMODE!=='elec'){el.innerHTML='';return;}const D=elecData(),bad=D.G.filter(g=>g.k!=null&&g.k>.8).length;
+  el.innerHTML=`<div class="note" style="margin-top:8px;padding:7px 9px;border-radius:6px;background:#2a2416;color:#ffd58a;line-height:1.5">⚡ Проекторы: <b>${kw(D.projW)}</b> (${D.projW?num(D.projW/230,1)+' А на одной фазе':'—'})<br>Прочие нагрузки: <b>${kw(D.loads)}</b> · Ивент-точки: <b>${num(D.evKW,1)} кВт</b> (${D.ev.length} шт)<br>Фазы: L1 ${kw(D.ph.L1)} · L2 ${kw(D.ph.L2)} · L3 ${kw(D.ph.L3)}${D.imb>15?` · <span style="color:#ff8a7a">перекос ${num(D.imb)}%</span>`:''}<br>Ориентир выделенной мощности: <b>≈ ${num(D.need,0)} кВт</b>${D.un.length?`<br><span style="color:#ff8a7a">Проекторов без группы: ${D.un.length}</span>`:''}${bad?`<br><span style="color:#ff8a7a">Групп с нагрузкой больше 80%: ${bad}</span>`:''}</div><div class="row" style="margin-top:6px"><button id="bElecRep2">⚡ Полная сводка</button></div>`;
+  $('#bElecRep2').onclick=elecReport;}
+function elecReportHTML(full){const D=elecData();
+  const ref=`<table class="t"><tr><th>Точка</th><th>Мощность</th><th>Нормальная длительная (80%)</th></tr>${[['Розетка 230 В 16 А',1,16],['CEE 32 А 1ф (синяя)',1,32],['CEE 16 А 3ф (красная)',3,16],['CEE 32 А 3ф (красная)',3,32],['CEE 63 А 3ф',3,63]].map(([n,ph,A])=>`<tr><td>${n}</td><td>${num(elecKW(ph,A),1)} кВт</td><td>${num(elecKW(ph,A)*.8,1)} кВт</td></tr>`).join('')}</table>`;
+  let h=`<h2>⚡ Электрика — сводка нагрузок</h2><div class="kv"><span>Проекторы (вкл., пик)</span><span><b>${kw(D.projW)}</b></span><span>Прочие заявленные нагрузки</span><span>${kw(D.loads)}</span><span>Ивент-точки (ёмкость)</span><span>${num(D.evKW,1)} кВт · ${D.ev.length} шт</span><span>Фаза L1 / L2 / L3</span><span>${kw(D.ph.L1)} / ${kw(D.ph.L2)} / ${kw(D.ph.L3)}${D.imb>15?` <b style="color:#e0533d">перекос ${num(D.imb)}%</b>`:''}</span><span>Ориентир выделенной мощности</span><span><b>≈ ${num(D.need,0)} кВт</b> (нагрузки × 1,25 + ивент-точки)</span></div>`;
+  h+=`<h3>Группы</h3><table class="t"><tr><th>Щит / группа</th><th>Фаза</th><th>Состав</th><th>Нагрузка</th><th>Ток</th><th>Автомат</th><th>Загрузка</th></tr>${D.G.map(g=>`<tr><td><b>${esc(g.name)}</b></td><td>${g.ph}</td><td>${g.proj.length?`проекторов: ${g.proj.length}`:''}${g.pts.length?`${g.proj.length?', ':''}точек: ${g.pts.length}`:''}${full&&g.proj.length?`<br><small>${g.proj.map(q=>esc(q.p.name)+' '+num(q.w)+' Вт').join(', ')}</small>`:''}</td><td>${num(g.load)} Вт</td><td>${num(g.I,1)} А</td><td>${g.brk?g.brk+' А':'—'}</td><td>${g.k!=null?num(g.k*100)+'% ':''}${g.st}</td></tr>`).join('')||'<tr><td colspan="7">Групп пока нет — поставьте точки в режиме «⚡ Электрика» и укажите щит/группу</td></tr>'}</table>`;
+  if(D.un.length)h+=`<div class="warn" style="margin-top:6px">Проекторы без группы (${D.un.length}, ${kw(D.un.reduce((a,u)=>a+u.w,0))}): ${D.un.map(u=>esc(u.p.name)).join(', ')}</div>`;
+  if(D.ev.length)h+=`<h3>Ивент-точки</h3><table class="t"><tr><th>Точка</th><th>Группа</th><th>Мощность</th></tr>${D.ev.map(o=>`<tr><td>${esc(o.name)}</td><td>${esc(o.grp||'—')}</td><td>${num(elecKW(o.phase==='3ф'?3:1,+o.brk||ELEC[o.ek].A),1)} кВт</td></tr>`).join('')}</table>`;
+  h+=`<h3>Справка по мощности точек</h3>${ref}<div class="note">Ток 1ф = P / 230 В; 3ф = P / (√3 · 400 В). На автомат 16 А держат длительно не больше ~2,9 кВт (80%). Цифры — ориентир для разговора с электриком-проектировщиком, не проект.</div>`;return h;}
+function elecReport(){openModal(`<div style="max-width:860px">${elecReportHTML(true)}<div class="row" style="margin-top:10px"><button id="bElecSave" class="pri">💾 Сохранить HTML</button><button id="no">Закрыть</button></div></div>`,()=>{$('#no').onclick=closeModal;$('#bElecSave').onclick=()=>saveFile(`${P.name||'Галерея'} — электрика.html`,new Blob([`<!doctype html><meta charset="utf-8"><title>Электрика</title><style>body{font:14px Arial;margin:24px;color:#222}table{border-collapse:collapse;margin:6px 0}td,th{border:1px solid #bbb;padding:4px 8px;text-align:left}.kv{display:grid;grid-template-columns:auto auto;gap:4px 16px}.warn{color:#b03a2e}.note{color:#555;font-size:12px}</style>${elecReportHTML(true)}`],{type:'text/html'}));});}
 /* ---- облако правок гостя (Firebase Realtime Database, REST) ---- */
 const CLOUD_DEFAULT='';
 const CLOUD=((window.GUEST_FILE&&window.GUEST_FILE.cloud)||CLOUD_DEFAULT||'').replace(/\/+$/,'');
@@ -898,6 +934,7 @@ function buildFurn(o,g,E,cy){const w=o.w,d=o.d,h=o.h,Y=E+(o.base||0),C=o.color,B
 function build3D(o,E){
   const t=o.type;
   if(t==='opening'){buildOpening3D(o,E);return;}
+  if(t==='elec'){const m=addRecv(new THREE.BoxGeometry(Math.max(2,o.w),Math.max(2,o.h),Math.max(2,o.d)),o.color,o.id);m.position.set(o.x,E+(o.base||0)+o.h/2,o.y);m.rotation.y=-(o.rot||0)*DEG;return;}
   if(t==='cutout'){buildCutout3D(o,E);return;}
   {const cs=cutoutsFor(o);if(cs.length){buildWithCuts(o,E,cs);return;}}
   if(t==='wall'&&wallOpenings(o).length){
@@ -1210,7 +1247,7 @@ function loop(t){
   if(rebuildQ){try{rebuild3D();}catch(err){rebuildQ=false;err3D(err);}}
   if(!Number.isFinite(camera.position.x+camera.position.y+camera.position.z+controls.target.x+controls.target.y+controls.target.z)){try{isoCam();}catch(_){camera.position.set(0,1500,1500);controls.target.set(1200,0,1200);}toast('Камера 3D сбилась — вернул общий вид',2500);}
   {const sk=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';if(sk!==lastSelKey)panelQ=true;}
-  if(panelQ&&t-lastPanel>120){panelQ=false;lastPanel=t;renderPanel();renderLists();}
+  if(panelQ&&t-lastPanel>120){panelQ=false;lastPanel=t;renderPanel();renderLists();updElecSum();}
   controls.update();
   {const vd=new THREE.Vector3();camera.getWorldDirection(vd);const ortho=camera.isOrthographicCamera,pane=$('#pane3d'),ph=pane.clientHeight||600;
    for(const m of POI3){const k=ortho?(camera.top-camera.bottom)/camera.zoom/ph:camera.position.distanceTo(m.position)*.00115;m.scale.setScalar(Math.max(6,k*7));}
@@ -1382,6 +1419,8 @@ function drawObj2D(o,sel){
   if(t==='slab'){poly(c);ctx.fillStyle='rgba(181,177,169,.18)';ctx.fill();ctx.strokeStyle=sel?acc:'#b5b1a9';ctx.lineWidth=1.5*px;ctx.stroke();
     ctx.beginPath();ctx.moveTo(c[0][0],c[0][1]);ctx.lineTo(c[2][0],c[2][1]);ctx.moveTo(c[1][0],c[1][1]);ctx.lineTo(c[3][0],c[3][1]);ctx.stroke();
     if(V.s>.1)label(o.x,o.y,`${o.name} · отм. ${num(o.elev)}`,'#ccc',10,0);return;}
+  if(t==='elec'){const E=ELEC[o.ek]||ELEC.outlet,r=Math.max(o.w,o.d)/2+6*px;ctx.beginPath();ctx.arc(o.x,o.y,Math.max(r,7*px),0,7);ctx.fillStyle=E.c+'cc';ctx.fill();ctx.lineWidth=(sel?2.5:1.2)*px;ctx.strokeStyle=sel?acc:'#111';ctx.stroke();ctx.lineWidth=px;
+    label(o.x,o.y,o.ek==='panel'?'▣':'⚡','#111',11,0,false);if(V.s>.12)label(o.x,o.y+Math.max(r,7*px)+9*px,`${E.s}${o.grp?' · '+o.grp:''}`,E.c,10,0,false);return;}
   if(t==='box'){poly(c);ctx.fillStyle='rgba(199,192,179,.35)';ctx.fill();ctx.strokeStyle=sel?acc:'#c7c0b3';ctx.stroke();return;}
   if(t==='cyc'){poly(c);ctx.fillStyle='rgba(232,230,225,.25)';ctx.fill();ctx.strokeStyle=sel?acc:'#d9d6cf';ctx.stroke();
     const cs=Math.cos(o.rot*DEG),sn=Math.sin(o.rot*DEG),P2=(lx,lz)=>[o.x+lx*cs-lz*sn,o.y+lx*sn+lz*cs];ctx.setLineDash([4*px,3*px]);for(const f of[.35,.65,.85]){const a=P2(-o.w/2,-o.d/2+o.d*f),b=P2(o.w/2,-o.d/2+o.d*f);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}ctx.setLineDash([]);
@@ -1466,7 +1505,7 @@ function hit2D(x,y){
   return null;}
 
 let placeLib=null;
-function placeAt(tool,x,y){let stStyle=null,ft=null;if(tool==='stairS'){tool='stair';stStyle='steps';}if(tool.startsWith('furn:')){ft=tool.slice(5);tool='furn';}
+function placeAt(tool,x,y){let stStyle=null,ft=null;if(tool==='stairS'){tool='stair';stStyle='steps';}if(tool.startsWith('furn:')){ft=tool.slice(5);tool='furn';}let ek=null;if(tool.startsWith('elec:')){ek=tool.slice(5);tool='elec';}
   if(tool==='projector'){const n=P.projectors.length,H=lvl().height;const p={id:uid('p'),name:`П${n+1}`,level:P.activeLevel,lib:placeLib||(P.library[0]||{}).id,x,y,z:Math.round(H-50),yaw:0,pitch:-10,roll:0,ceiling:false,zoom:.3,shiftV:0,shiftH:0,power:100,content:'grid',color:PCOL[n%PCOL.length],on:true,showWide:true,showTele:true,aim:{x:x+400,y,z:Math.round(H/2)},useAim:true};placeLib=null;
     mutate(()=>P.projectors.push(p));select({kind:'proj',id:p.id});setTool('select');return;}
   const L=lvl(),o={id:uid(),type:tool,level:P.activeLevel,name:TYPES[tool].n,color:TYPES[tool].color,x,y,rot:0,rx:0,rz:0};
@@ -1478,6 +1517,7 @@ function placeAt(tool,x,y){let stStyle=null,ft=null;if(tool==='stairS'){tool='st
   if(tool==='cyc')Object.assign(o,{w:400,d:60,h:60,base:0,seg:24});
   if(tool==='furn'){const F=FURN[ft]||FURN.table;Object.assign(o,{ft:F.ft||ft,preset:ft,name:F.n,color:F.c,w:F.w,d:F.d,h:F.h,base:0},deep(F.p||{}));}
   if(tool==='cycC')Object.assign(o,{w:60,d:60,h:60,vh:0,base:0,seg:24});
+  if(tool==='elec'){const E=ELEC[ek]||ELEC.outlet;Object.assign(o,{ek,name:E.n,color:E.c,w:E.w,d:E.d,h:E.h,base:E.base,brk:E.A,phase:E.ph===3?'3ф':'L1',grp:ek==='panel'?'ЩР-'+(P.objects.filter(q=>q.type==='elec'&&q.ek==='panel').length+1):'',load:0});}
   if(tool==='model'){if(!MODELPEND){toast('Сначала выберите файл модели');return;}const M=MODELPEND;Object.assign(o,{name:M.name,w:M.w,d:M.d,h:M.h,mw:M.w,md:M.d,mh:M.h,base:0,mesh:{v:M.v,f:M.f}});MODELPEND=null;}
   if(tool==='stair'){Object.assign(o,{w:120,d:300,h:L.height,base:0,steps:18,calc:true,riser:18,tread:30});const c=stairCalc(o);o.steps=c.n;o.d=c.run;if(stStyle)o.style=stStyle;}
   if(tool==='zone')Object.assign(o,{w:400,d:300,reno:false});
@@ -1649,7 +1689,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.25.0';let lastSelKey='';
+const APPVER='1.26.0';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
@@ -1710,6 +1750,12 @@ function propsHTML(){
       h+=fr('Вырезать из',`<select data-k="target"><option value="">все пересекающиеся элементы</option>${hosts.map(q=>`<option value="${q.id}" ${o.target===q.id?'selected':''}>только «${esc(q.name)}»</option>`).join('')}</select>`);
       h+=`<div class="note">${hosts.length?'Режет: '+hosts.map(q=>'«'+esc(q.name)+'»').join(', '):'⚠ Сейчас ничего не пересекает — подвиньте вырез в элемент.'}<br>Вырез — это красный объём: тяните его стрелками и кубиками в 3D или на плане, как любой элемент. Чтобы разрезать балку надвое — сделайте вырез поперёк неё.</div>`;}
     if(o.type==='box'||o.type==='screen'||o.type==='frame')h+=fr('Высота',nIn('h',o.h),'см')+fr('Низ от пола',nIn('@baseRel',r1((o.base||0)-onOff(o))),'см');
+    if(o.type==='elec'){const E=ELEC[o.ek]||ELEC.outlet,groups=[...new Set([...P.objects.filter(q=>q.type==='elec'&&q.grp).map(q=>q.grp),...P.projectors.filter(q=>q.grp).map(q=>q.grp)])];
+      h+=fr('Тип',`<select data-k="ek">${Object.entries(ELEC).map(([k,F])=>`<option value="${k}" ${o.ek===k?'selected':''}>${esc(F.n)}</option>`).join('')}</select>`)
+      +fr(o.ek==='panel'?'Имя щита':'Щит / группа',`<input type="text" data-k="grp" list="elecGroups" value="${esc(o.grp||'')}" placeholder="например ЩР-1 / гр.3"><datalist id="elecGroups">${groups.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>`)
+      +`<div class="fr2">${fr('Фаза',`<select data-k="phase">${['L1','L2','L3','3ф'].map(v=>`<option ${o.phase===v?'selected':''}>${v}</option>`).join('')}</select>`)}${fr('Автомат',nIn('brk',o.brk??E.A,'step="1" min="1"'),'А')}</div>`
+      +fr('Своя нагрузка (кроме проекторов)',nIn('load',o.load||0,'step="10" min="0"'),'Вт')
+      +`<div class="note">Номинал точки: <b>${num(elecKW(o.phase==='3ф'?3:1,o.brk??E.A),1)} кВт</b> (${o.phase==='3ф'?'√3·400 В':'230 В'} × ${o.brk??E.A} А). Проекторы привязываются к группе в их свойствах. Полная сводка — «⚡ Электрика» в меню «Вид» или кнопка ниже.</div><div class="row"><button id="bElecRep">⚡ Сводка нагрузок</button></div>`;}
     if(o.type==='furn'){h+=fr('Вид',`<select id="furnPreset">${Object.entries(FURN).map(([k,F])=>`<option value="${k}" ${(o.preset||o.ft)===k?'selected':''}>${F.n}</option>`).join('')}</select>`)+fr('Высота',nIn('h',o.h,'min="1"'),'см')+fr('Низ от пола',nIn('@baseRel',r1((o.base||0)-onOff(o))),'см');
       if(o.ft==='table')h+=fr('Столешница',`<select data-k="shape"><option value="rect" ${o.shape!=='round'?'selected':''}>прямоугольная</option><option value="round" ${o.shape==='round'?'selected':''}>круглая / овальная</option></select>`)+fr('Опора',`<select data-k="sup"><option value="legs" ${(o.sup||'legs')==='legs'?'selected':''}>4 ножки</option><option value="ped" ${o.sup==='ped'?'selected':''}>одна широкая ножка</option><option value="panel" ${o.sup==='panel'?'selected':''}>две боковые опоры</option></select>`)+fr('Толщина столешницы',nIn('tt',o.tt||4,'min="1"'),'см');
       if(o.ft==='sofa')h+=fr('Угол',`<select data-k="corner"><option value="0" ${!+o.corner?'selected':''}>прямой</option><option value="1" ${+o.corner===1?'selected':''}>угловой, угол справа</option><option value="-1" ${+o.corner===-1?'selected':''}>угловой, угол слева</option></select>`)+fr('Глубина сиденья',nIn('sd',o.sd||o.d,'min="30"'),'см')+(+o.corner?`<div class="note">У углового «Глубина» выше — длина боковой части (вся глубина буквы Г).</div>`:'');
@@ -1755,6 +1801,7 @@ function bindProps(B){
   if(p)return bindProj(B,p);
   if(!o)return;
   bindInputs(B,()=>selObj(),{reset:'obj'});
+  {const er=B.querySelector('#bElecRep');if(er)er.onclick=elecReport;}
   {const fp=B.querySelector('#furnPreset');if(fp)fp.onchange=()=>mutate(()=>{const F=FURN[fp.value];if(!F)return;o.preset=fp.value;o.ft=F.ft;Object.assign(o,deep(F.p||{}));if(o.name===FURN[o.preset]?.n||Object.values(FURN).some(x=>x.n===o.name))o.name=F.n;});}
   {const on=B.querySelector('#objOn');if(on)on.onchange=()=>mutate(()=>{const rel=(o.base||0)-onOff(o);if(on.value)o.on=on.value;else delete o.on;o.base=rel+onOff(o);});}
   {const rf=B.querySelector('#opRef');if(rf)rf.onchange=()=>mutate(()=>{const rel=o.sill-opRefOff(o);if(rf.value)o.ref=rf.value;else delete o.ref;o.sill=Math.max(0,rel+opRefOff(o));});}
@@ -1793,6 +1840,8 @@ function projHTML(p){
   ${fr('Модель',`<select id="pModel">${P.library.map(q=>`<option value="${q.id}" ${q.id===p.lib?'selected':''}>${esc(q.name)}${q.watts?' · '+num(q.watts)+' Вт':''}</option>`).join('')}</select>`)}
   ${(()=>{const mm=libById(p.lib),on=P.projectors.filter(q=>q.on!==false),tot=on.reduce((a,q)=>a+((libById(q.lib)||{}).watts||0),0),miss=on.filter(q=>!(libById(q.lib)||{}).watts).length;
     return `<div class="note" style="margin:-2px 0 6px;padding:5px 8px;border-radius:6px;background:#2a2416;color:#ffd58a">⚡ Потребление в пике: <b>${wattsTxt(mm&&mm.watts)}</b><br>Все включённые проекторы (${on.length} шт): <b>${num(tot)} Вт</b> · ≈${num(tot/220,1)} А${miss?` · без данных: ${miss}`:''}</div>`;})()}
+  ${(()=>{const groups=[...new Set([...P.objects.filter(q=>q.type==='elec'&&q.grp).map(q=>q.grp),...P.projectors.filter(q=>q.grp).map(q=>q.grp)])];
+    return `<div class="fr2">${fr('Щит / группа',`<input type="text" data-k="grp" list="pGroups" value="${esc(p.grp||'')}" placeholder="ЩР-1 / гр.2"><datalist id="pGroups">${groups.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>`)}${fr('Фаза',`<select data-k="phase"><option value="">как у группы</option>${['L1','L2','L3'].map(v=>`<option ${p.phase===v?'selected':''}>${v}</option>`).join('')}</select>`)}</div>`;})()}
   ${(()=>{const mm=libById(p.lib),L=lensesFor(mm);const cur=p.lens||(L?L[0].id:'');
     let o=`<option value="">${L?'штатный ('+esc(L[0].id)+')':'встроенный (TR '+(mm?mm.trMin+'–'+mm.trMax:'?')+')'}</option>`;if(L)o+=L.slice(1).map(l=>`<option value="${l.id}" ${p.lens===l.id?'selected':''}>${esc(l.name)} · TR ${l.trMin}${l.trMax!==l.trMin?'–'+l.trMax:''}</option>`).join('');
     o+=`<option value="custom" ${p.lens==='custom'?'selected':''}>своя линза (ввести TR)…</option>`;
@@ -3154,12 +3203,13 @@ function setMode(m){MODE=m;document.querySelectorAll('[data-mode]').forEach(b=>b
 const WM={build:{tools:['select','measure'],add:['wall','column','slab','beam','frame','rail','door','window','cut','cutout','stair','stairS','cyc','cycC','zone'],title:'Строительные элементы',hint:'Выберите элемент и кликните на плане или по полу в 3D'},
   proj:{tools:['select','aim'],add:'proj',title:'Добавить проектор',hint:'Проектор по умолчанию или готовая модель из библиотеки — затем клик на плане или по полу в 3D. Стены и остальное в этом режиме заблокированы'},
   decor:{tools:['select','measure'],add:['furn:table','furn:tableRound','furn:tablePed','furn:tablePanel','furn:coffee','furn:coffeeRound','furn:chair','furn:armchair','furn:sofa','furn:sofaL','furn:bench','furn:cabinet','furn:shelf','furn:plant','furn:pedestal','box','screen','model'],title:'Оформление',hint:'Мебель, растения, подиумы и модели из файлов. Из полезной площади не вычитаются'},
+  elec:{tools:['select','measure'],add:Object.keys(ELEC).map(k=>'elec:'+k),title:'Электрика',hint:'Поставьте розетки, силовые точки и щиты, укажите щит/группу и фазу. Проекторы привязываются к группе в их свойствах (режим «Проекторы»)'},
   rooms:{tools:['select','measure'],add:[],title:'',hint:''}};
-function syncWM(){document.querySelectorAll('#wmodes [data-wm]').forEach(b=>{b.classList.toggle('on',b.dataset.wm===WMODE);if(b.dataset.wm==='rooms')b.style.display=GUEST?'none':'';});const M=WM[WMODE];
+function syncWM(){document.querySelectorAll('#wmodes [data-wm]').forEach(b=>{b.classList.toggle('on',b.dataset.wm===WMODE);if(b.dataset.wm==='rooms'||b.dataset.wm==='elec')b.style.display=GUEST?'none':'';});const M=WM[WMODE];
   $('#tools').innerHTML=TOOLS.filter(t=>M.tools.includes(t[0])).map(([t,n,k])=>`<button data-t="${t}" class="${TOOL===t?'on':''}" title="${n}${k?' ('+k+')':''}">${n}</button>`).join('');
   let items=GUEST&&WMODE==='build'?[['door','Дверной проём','◫'],['window','Окно','⊟']]:M.add==='proj'?[['projector','Проектор (по умолчанию)','◉'],...(P.library||[]).filter(l=>!/^ex\d+$/.test(l.id)).map(l=>['proj:'+l.id,l.name,'◎'])]:M.add.map(t=>ADD.find(a=>a[0]===t)).filter(Boolean);
   $('#addGrid').innerHTML=items.map(([t,n,i])=>`<button data-t="${t}" class="${TOOL===t?'on':''}"><i>${i}</i>${n}</button>`).join('');
-  $('#addTitle').textContent=M.title;$('#addSec').style.display=WMODE==='rooms'?'none':'';$('#secProj').style.display=WMODE==='proj'?'':'none';const ah=$('#addHint');if(ah)ah.textContent=M.hint;}
+  $('#addTitle').textContent=M.title;$('#addSec').style.display=WMODE==='rooms'?'none':'';$('#secProj').style.display=WMODE==='proj'?'':'none';const ah=$('#addHint');if(ah)ah.textContent=M.hint;updElecSum();}
 function setWMode(m){if(!WM[m]||(GUEST&&m==='rooms'))m=GUEST?'decor':'build';if(m!=='proj'&&PMODE)setPMode(false);if(m!=='rooms'&&RMODE)setRMode(false);WMODE=m;if(m==='proj'&&!PMODE)setPMode(true);if(m==='rooms'&&!RMODE)setRMode(true);
   if(!WM[m].tools.includes(TOOL)&&!(m==='proj'&&TOOL==='projector'))setTool('select',true);lsSet('gp_wmode',m);syncWM();}
 document.querySelectorAll('#wmodes [data-wm]').forEach(b=>b.onclick=()=>setWMode(b.dataset.wm));
@@ -3303,6 +3353,7 @@ const MENUS={
     {h:'Отображение'},['Схема','',()=>setMode('schema'),()=>MODE==='schema'],['Свет','',()=>setMode('light'),()=>MODE==='light'],['Люксы (тепловая карта)','',()=>setMode('heat'),()=>MODE==='heat'],
     {h:'Камера 3D'},['3D (перспектива)','5',()=>setViewCam('persp'),()=>!ORTHO.view],['Спереди','1',()=>setViewCam('front'),()=>ORTHO.view==='front'],['Сзади','Ctrl+1',()=>setViewCam('back'),()=>ORTHO.view==='back'],
     ['Слева','Ctrl+3',()=>setViewCam('left'),()=>ORTHO.view==='left'],['Справа','3',()=>setViewCam('right'),()=>ORTHO.view==='right'],['Сверху','7',()=>setViewCam('top'),()=>ORTHO.view==='top'],
+    ['⚡ Электрика: сводка нагрузок…','',elecReport],'-',
     {h:'Показывать'},['Лучи проекторов','',()=>$('#bRays').click(),()=>P.settings.rays],['Подложку PDF на плане','',()=>$('#bUnder').click(),()=>P.settings.under.on],['Умный срез стен','',()=>{$('#cbCutaway').click();},()=>P.settings.cutaway===true],['Замеры','',()=>{P.settings.showDims=P.settings.showDims===false;changed();},()=>P.settings.showDims!==false],['Размеры всех стен','',()=>$('#bDims').click(),()=>P.settings.dimsAll],
     '-',['Вписать план','',fit2D]]},
   help:{t:'Справка',items:[['Руководство','F1',()=>openHelp('guide')],['Горячие клавиши','',()=>openHelp('keys')],['О модели из PDF','',()=>openHelp('pdf')]]},
