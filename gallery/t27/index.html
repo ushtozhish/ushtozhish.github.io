@@ -3428,7 +3428,7 @@ async function idxSave(){if(!PIDX)return;try{await stPut('_index',JSON.stringify
 async function idxTouch(t){if(GUEST||GF)return;const L=await idxLoad();let e=L.find(q=>q.id===CURP);const ch=!e||e.name!==P.name||t-(e.savedAt||0)>5*60000;if(!e){e={id:CURP};L.push(e);}e.name=P.name;e.savedAt=t;if(ch)await idxSave();}
 function setCurP(id){CURP=id;try{localStorage.setItem('gp_curProj',id);}catch(e){}document.title=(P.name||'Проект')+' — Галерея';const tt=$('header .title');if(tt)tt.textContent=P.name||'Галерея';}
 function blankProject(name){const d=defaultProject();return{v:1,name,settings:{...deep(d.settings),under:{...deep(d.settings.under),on:false}},levels:[{id:'L1',name:'1 этаж',elev:0,height:300,floor:true,ceiling:true}],activeLevel:'L1',objects:[],projectors:[],library:deep(P.library),dims:[]};}
-async function flushSave(){if(dirtySave){clearTimeout(saveT);await doSave();}}
+async function flushSave(){clearTimeout(saveT);await doSave();}
 async function openProject(id){if(id===CURP){closeModal();return;}if(GUEST||GF)return;try{await flushSave();const d=await stGet(id);if(!d||!d.json){toast('Проект не найден',4000);return;}
     P=migrate(JSON.parse(d.json));BASEJ=id==='main'?d.json:null;LAYER_AT=0;setCurP(id);SEL=null;hist.length=0;fut.length=0;changed();dirtySave=false;clearTimeout(saveT);fit2D();closeModal();toast('Открыт проект «'+P.name+'»',3000);$('#fSave').textContent='проект «'+P.name+'»';}
   catch(e){toast('Не удалось открыть проект: '+e.message,6000);}}
