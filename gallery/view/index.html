@@ -159,7 +159,7 @@ kbd{font-family:var(--mono);font-size:11px;background:#333;border:1px solid #555
     <button id="bRedo" title="Повторить (Ctrl+Shift+Z)">↷</button>
   </div>
   <span id="voBadge">👁 Только просмотр</span><div class="grp"><button id="bLock" class="on" style="font-size:15px;min-width:34px" title="Только просмотр">🔒</button><button id="bMobSave" style="display:none;font-weight:700" title="Сохранить">💾 Сохранить</button><button id="bGuestSave" style="display:none;background:#2e7d32;color:#fff;border-color:#2e7d32;font-weight:700" title="Сохранить ваши правки в файл, чтобы отправить владельцу проекта">📤 Отправить правки</button></div>
-  <div class="grp" id="wmodes" title="Режим работы"><button data-wm="build" title="Построение помещения: стены, колонны, плиты, двери, окна, лестницы">🏗 Построение</button><button data-wm="proj" title="Расстановка и наведение проекторов (остальное заблокировано)">🎥 Проекторы</button><button data-wm="decor" title="Оформление: мебель, растения, подиумы, модели из файлов">🪑 Оформление</button><button data-wm="elec" title="Электрика: розетки, силовые точки, щиты, нагрузки по группам и фазам">⚡ Электрика</button><button data-wm="rooms" title="Замер помещений: площади пола, потолка, стен">📐 Помещения</button></div>
+  <div class="grp" id="wmodes" title="Режим работы"><button data-wm="build" title="Построение помещения: стены, колонны, плиты, двери, окна, лестницы">🏗 Построение</button><button data-wm="proj" title="Расстановка и наведение проекторов (остальное заблокировано)">🎥 Проекторы</button><button data-wm="decor" title="Оформление: мебель, растения, подиумы, модели из файлов">🪑 Оформление</button><button data-wm="dims" title="Замеры: только линейки и размеры, остальное не выбирается">📏 Замеры</button><button data-wm="elec" title="Электрика: розетки, силовые точки, щиты, нагрузки по группам и фазам">⚡ Электрика</button><button data-wm="rooms" title="Замер помещений: площади пола, потолка, стен">📐 Помещения</button></div>
   <div class="grp tools" id="tools"></div>
   <span style="flex:1"></span>
   <div class="grp" title="Раскладка окон">
@@ -411,7 +411,7 @@ function lockMsg(){toast(VIEWONLY?'👁 Это страница только д�
 function lockRevert(b){try{const j=JSON.parse(b);P.objects=j.objects;P.projectors=j.projectors;P.levels=j.levels;fixSel();}catch(e){}lockMsg();}
 function setLock(v,quiet){if(VIEWONLY)v=true;VLOCK=!!v;document.body.classList.toggle('vlock',VLOCK);const b=$('#bLock');if(b){b.textContent=VLOCK?'🔒':'🔓';b.classList.toggle('on',VLOCK);b.title=VLOCK?'Только просмотр. Нажмите, чтобы разрешить изменения':'Изменения разрешены. Нажмите, чтобы закрыть от случайных правок';}
   if(VLOCK&&typeof setTool==='function'&&TOOL!=='select'&&TOOL!=='measure')setTool('select');panelQ=true;rebuildQ=true;try{attachGizmo();}catch(e){}if(!quiet)toast(VLOCK?'🔒 Только просмотр':'🔓 Редактирование включено',1400);}
-function pushHist(before){if(VLOCK){lockRevert(before);return;}hist.push(before);if(hist.length>200)hist.shift();fut=[];}
+function pushHist(before){if(VLOCK){let same=false;try{const j=JSON.parse(before);same=JSON.stringify([j.objects,j.projectors,j.levels])===JSON.stringify([P.objects,P.projectors,P.levels]);}catch(e){}if(!same){lockRevert(before);return;}}hist.push(before);if(hist.length>200)hist.shift();fut=[];}
 function mutate(fn,opts={}){const b=snapshot();fn();for(const o of P.objects)if(badNum(o))fixNum(o);pushHist(b);changed(opts);rememberNum();}
 function undo(){if(VLOCK){lockMsg();return;}if(!hist.length)return;fut.push(snapshot());P=JSON.parse(hist.pop());fixSel();changed();}
 function redo(){if(VLOCK){lockMsg();return;}if(!fut.length)return;hist.push(snapshot());P=JSON.parse(fut.pop());fixSel();changed();}
@@ -481,7 +481,13 @@ function elecData(){const G=new Map(),un=[],gp=k=>{if(!G.has(k))G.set(k,{name:k,
   const need=(projW+loads)/1000*1.25+evKW;
   return{G:[...G.values()].sort((a,b)=>a.name.localeCompare(b.name,'ru')),un,ph,imb,projW,loads,ev,evKW,need,pts,panels:pts.filter(o=>o.ek==='panel')};}
 const kw=w=>num(w/1000,1)+' кВт';
-function updElecSum(){const el=$('#elecSum');if(!el)return;if(WMODE!=='elec'){el.innerHTML='';return;}const D=elecData(),bad=D.G.filter(g=>g.k!=null&&g.k>.8).length;
+function updElecSum(){const el=$('#elecSum');if(!el)return;
+  if(WMODE==='dims'){const L=(P.dims||[]).filter(d=>d.level===P.activeLevel),sd=selDim();
+    el.innerHTML=`<div class="row" style="margin:6px 0"><button id="dmNew" class="${TOOL==='measure'?'on':''}">📏 Новый замер</button><button id="dmSel" class="${TOOL==='select'?'on':''}">Выбор</button></div><div class="note">Замеров на этаже: <b>${L.length}</b></div><div class="list" style="margin-top:4px">${L.map(d=>`<div class="li ${sd&&sd.id===d.id?'sel':''}" data-dmid="${d.id}" style="display:flex;gap:6px;align-items:center;cursor:pointer"><span style="flex:1">${esc(d.name||'Замер')}</span><span class="note">${num(dimLen(d)/100,2)} м${d.real?` · факт ${num(d.real/100,2)}`:''}</span><button data-dmdel="${d.id}" class="danger" title="Удалить замер" style="padding:2px 6px">🗑</button></div>`).join('')||'<div class="note">Пока нет — нажмите «Новый замер» и кликните две точки</div>'}</div>`;
+    $('#dmNew').onclick=()=>{setTool('measure');updElecSum();};$('#dmSel').onclick=()=>{setTool('select');updElecSum();};
+    el.querySelectorAll('[data-dmid]').forEach(r=>r.onclick=ev=>{if(ev.target.closest('[data-dmdel]'))return;select({kind:'dim',id:r.dataset.dmid});draw2D();updElecSum();});
+    el.querySelectorAll('[data-dmdel]').forEach(b=>b.onclick=()=>{const id=b.dataset.dmdel;mutate(()=>{P.dims=(P.dims||[]).filter(d=>d.id!==id);});if(SEL&&SEL.id===id)select(null);updElecSum();});return;}
+  if(WMODE!=='elec'){el.innerHTML='';return;}const D=elecData(),bad=D.G.filter(g=>g.k!=null&&g.k>.8).length;
   el.innerHTML=`<div class="note" style="margin-top:8px;padding:7px 9px;border-radius:6px;background:#2a2416;color:#ffd58a;line-height:1.5">⚡ Проекторы: <b>${kw(D.projW)}</b> (${D.projW?num(D.projW/230,1)+' А на одной фазе':'—'})<br>Прочие нагрузки: <b>${kw(D.loads)}</b> · Ивент-точки: <b>${num(D.evKW,1)} кВт</b> (${D.ev.length} шт)<br>Фазы: L1 ${kw(D.ph.L1)} · L2 ${kw(D.ph.L2)} · L3 ${kw(D.ph.L3)}${D.imb>15?` · <span style="color:#ff8a7a">перекос ${num(D.imb)}%</span>`:''}<br>Ориентир выделенной мощности: <b>≈ ${num(D.need,0)} кВт</b>${D.un.length?`<br><span style="color:#ff8a7a">Проекторов без группы: ${D.un.length}</span>`:''}${bad?`<br><span style="color:#ff8a7a">Групп с нагрузкой больше 80%: ${bad}</span>`:''}</div><div class="row" style="margin-top:6px"><button id="bElecRep2">⚡ Полная сводка</button></div>`;
   $('#bElecRep2').onclick=elecReport;}
 function elecReportHTML(full){const D=elecData();
@@ -1179,6 +1185,7 @@ function click3D(e){
   if(TOOL==='door'||TOOL==='window'){const h=pick3D(e,RECV);const w=h&&objById(h.object.userData.id);if(w&&w.type==='wall'){addOpeningAt(h.point.x,h.point.z,TOOL,w.id,h.point.y-lvById(w.level).elev);}else toast('Кликните по стене');return;}
   if(TOOL!=='select'){{const h=pick3D(e,RECV),q=h&&objById(h.object.userData.id),n=h&&h.face?h.face.normal.clone().transformDirection(h.object.matrixWorld):null;const top=q&&q.type==='slab'&&n&&n.y>.7?q:null;const nw=top?top.id:'';if((P.settings.wfloor||'')!==nw&&(top||(h&&n&&n.y>.7))){P.settings.wfloor=nw;syncWF();draw2D();toast(top?`Элемент встанет на верх «${top.name}» (+${num(top.elev+top.thick)} см)`:'Элемент встанет на пол этажа',2200);}}
     const v=floorPt3D(e);if(!v){toast('Кликните по полу');return;}toolClick(snapPt(v.x,v.z,e,toolPts[toolPts.length-1]),e);return;}
+  if(WMODE==='dims'){select(null);return;}
   const h=pick3D(e,PICK.filter(m=>m.userData.poi))||pick3D(e,PMODE?PICK.filter(m=>m.userData.pid||m.userData.poi):PICK);
   if(!h){select(null);return;}
   const u=h.object.userData;
@@ -1471,7 +1478,7 @@ function drawProj2D(p,sel){
 }
 const RECT_H=[['c0',-1,-1],['c1',1,-1],['c2',1,1],['c3',-1,1],['ex+',1,0],['ex-',-1,0],['ey+',0,1],['ey-',0,-1]];
 function handles(){
-  const o=selObj(),p=selProj(),H=[];if(MSEL.size>1)return H;const dd=selDim();if(dd&&!dimShownIn(dd,'top'))return H;if(dd&&(VLOCK||GUEST&&BASEIDS().has(dd.id)))return H;if(VLOCK)return H;if(dd)return[{k:'d1',x:dd.x1,y:dd.y1},{k:'d2',x:dd.x2,y:dd.y2}];if(p){if(p.aim)H.push({k:'poi',x:p.aim.x,y:p.aim.y});if(!p.useAim){const d=110/V.s;H.push({k:'aim',x:p.x+Math.cos(p.yaw*DEG)*d,y:p.y+Math.sin(p.yaw*DEG)*d});}return H;}
+  const o=selObj(),p=selProj(),H=[];if(MSEL.size>1)return H;const dd=selDim();if(dd&&!dimShownIn(dd,'top'))return H;if(dd&&((VLOCK&&WMODE!=='dims')||GUEST&&BASEIDS().has(dd.id)))return H;if(WMODE==='dims'&&!dd)return H;if(VLOCK)return H;if(dd)return[{k:'d1',x:dd.x1,y:dd.y1},{k:'d2',x:dd.x2,y:dd.y2}];if(p){if(p.aim)H.push({k:'poi',x:p.aim.x,y:p.aim.y});if(!p.useAim){const d=110/V.s;H.push({k:'aim',x:p.x+Math.cos(p.yaw*DEG)*d,y:p.y+Math.sin(p.yaw*DEG)*d});}return H;}
   if(RMODE||!o||o.type==='room'||locked(o))return H;const k=TYPES[o.type].kind;
   if(k==='seg'){H.push({k:'p1',x:o.x1,y:o.y1},{k:'p2',x:o.x2,y:o.y2});
     const th=o.type==='wall'?o.thick:o.w,dx=o.x2-o.x1,dy=o.y2-o.y1,L=Math.hypot(dx,dy)||1;
@@ -1490,6 +1497,7 @@ function drawHandles(){const px=1/V.s;for(const h of handles()){ctx.fillStyle=h.
 function hit2D(x,y){
   const tol=6/V.s;
   if(PMODE){for(const p of [...P.projectors].reverse()){if(p.level!==P.activeLevel)continue;if(Math.hypot(p.x-x,p.y-y)<Math.max(24,14/V.s))return{kind:'proj',id:p.id};}return null;}
+  if(WMODE==='dims'){let best=null,bd=12/V.s;for(const d of P.dims||[]){if(d.level!==P.activeLevel||!dimShownIn(d,'top'))continue;const q=segDist(x,y,d.x1,d.y1,d.x2,d.y2);if(q<=bd){bd=q;best={kind:'dim',id:d.id};}}return best;}
   if(P.settings.showDims!==false)for(const d of [...(P.dims||[])].reverse()){if(d.level!==P.activeLevel||!dimShownIn(d,'top'))continue;if(segDist(x,y,d.x1,d.y1,d.x2,d.y2)<=7/V.s)return{kind:'dim',id:d.id};}
   for(const p of [...P.projectors].reverse()){if(p.level!==P.activeLevel)continue;
     if(Math.hypot(p.x-x,p.y-y)<Math.max(24,14/V.s))return{kind:'proj',id:p.id};
@@ -1531,10 +1539,10 @@ cv.addEventListener('pointerdown',e=>{
   if(e.pointerType==='touch'){TP.set(e.pointerId,{x:e.clientX,y:e.clientY});if(TP.size===2){const[a,b]=[...TP.values()],r=cv.getBoundingClientRect(),mx=(a.x+b.x)/2-r.left,my=(a.y+b.y)/2-r.top;drag={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,s0:V.s,w0:[(mx-V.ox)/(V.s*(V.m||1)),(my-V.oy)/V.s]};return;}}
   cv.setPointerCapture(e.pointerId);const[x,y]=toW(e);
   if(e.button===1||e.button===2||spaceDown){drag={type:'pan',sx:e.clientX,sy:e.clientY,ox:V.ox,oy:V.oy};return;}
-  if(EV()&&VLOCK&&e.button===0&&!RMODE){try{const C=elevCands(x,y);if(C.length)select(C[0]);}catch(er){}drag={type:'pan',sx:e.clientX,sy:e.clientY,ox:V.ox,oy:V.oy};return;}
+  if(EV()&&VLOCK&&e.button===0&&!RMODE&&TOOL==='select'&&WMODE!=='dims'){try{const C=elevCands(x,y);if(C.length)select(C[0]);}catch(er){}drag={type:'pan',sx:e.clientX,sy:e.clientY,ox:V.ox,oy:V.oy};return;}
   if(EV()){if(RMODE){toast('В режиме помещений на фасадах ничего не двигается — только просмотр',2000);return;}elevDown(e,x,y);return;}
   if(RMODE){rmDown2D(x,y,e);return;}
-  if(TOOL==='select'&&VLOCK&&e.button===0){const hit=hit2D(x,y);if(hit)select(hit);drag={type:'pan',sx:e.clientX,sy:e.clientY,ox:V.ox,oy:V.oy,click:!hit};return;}
+  if(TOOL==='select'&&VLOCK&&e.button===0&&WMODE!=='dims'){const hit=hit2D(x,y);if(hit)select(hit);drag={type:'pan',sx:e.clientX,sy:e.clientY,ox:V.ox,oy:V.oy,click:!hit};return;}
   if(TOOL==='select'){
     for(const h of handles())if(Math.hypot(h.x-x,h.y-y)<12/V.s){drag={type:'handle',h,before:snapshot(),src:deep(selObj()||selProj()),ops:opsSnap(selObj())};return;}
     const hit=hit2D(x,y);
@@ -1547,10 +1555,11 @@ cv.addEventListener('pointerdown',e=>{
     if(hit&&hit.kind==='obj'&&(locked(objById(hit.id))||(groupObjs()||[]).some(locked)))return;
     if(hit){const G=groupObjs();const srcs={};if(G)for(const o of G)srcs[o.id]=deep(o);drag={type:'move',start:[x,y],before:snapshot(),src:deep(selObj()||selProj()),srcs:G?srcs:null,moved:false};return;}
     if(e.pointerType==='touch'){drag={type:'pan',sx:e.clientX,sy:e.clientY,ox:V.ox,oy:V.oy,click:true};return;}
+    if(WMODE==='dims'){select(null);drag={type:'pan',sx:e.clientX,sy:e.clientY,ox:V.ox,oy:V.oy,click:true};return;}
     drag={type:'marq',start:[x,y],cur:[x,y],add:e.ctrlKey||e.shiftKey,click:true};return;}
   if(TOOL==='gmove'){gmClick(gmSnapPlan(x,y,e),e);return;}
   if(TOOL==='aim'){const p=selProj();if(p)mutate(()=>{const z=p.aim?p.aim.z:Math.round(lvById(p.level).height/2);const s2=snapPt(x,y,e);p.aim={x:s2[0],y:s2[1],z};p.useAim=true;});else toast('Сначала выберите проектор');return;}
-  if(TOOL==='measure'){measureClick(x,y,e);return;}
+  if(TOOL==='measure'){if(WMODE==='dims'&&!toolPts.length&&!e.altKey){const h=hit2D(x,y);if(h&&h.kind==='dim'){select(h);draw2D();return;}}measureClick(x,y,e);return;}
   if(TOOL==='cut'){cutClick2D(x,y,e);return;}
   if(TOOL==='cutout'){cutoutClick2D(x,y);return;}
   if(TOOL==='roomAuto'){autoRoomSmart(x,y,null,null);return;}
@@ -1689,11 +1698,11 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.27.0';let lastSelKey='';
+const APPVER='1.28.0';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
-  if(TAB==='props'){try{B.innerHTML=propsHTML();bindProps(B);if(VLOCK){B.querySelectorAll('input,select,textarea').forEach(el=>el.disabled=true);B.insertAdjacentHTML('afterbegin','<div class="note" style="margin:6px 8px;padding:6px 8px;border:1px solid #ffa31a;border-radius:6px;color:#ffcf80">'+(VIEWONLY?'👁 Страница только для просмотра: можно вращать, приближать и рассматривать.':'🔒 Только просмотр. Чтобы менять — нажмите замок вверху.')+'</div>');}}catch(e){console.error(e);B.innerHTML+=`<div class="note" style="color:#ff6b5b">Ошибка панели (${APPVER}): ${esc(e.message)}. Сделайте скриншот этого текста — по нему я быстро починю.</div>`;}}
+  if(TAB==='props'){try{B.innerHTML=propsHTML();bindProps(B);if(VLOCK&&!selDim()){B.querySelectorAll('input,select,textarea').forEach(el=>el.disabled=true);B.insertAdjacentHTML('afterbegin','<div class="note" style="margin:6px 8px;padding:6px 8px;border:1px solid #ffa31a;border-radius:6px;color:#ffcf80">'+(VIEWONLY?'👁 Страница только для просмотра: можно вращать, приближать и рассматривать.':'🔒 Только просмотр. Чтобы менять — нажмите замок вверху.')+'</div>');}}catch(e){console.error(e);B.innerHTML+=`<div class="note" style="color:#ff6b5b">Ошибка панели (${APPVER}): ${esc(e.message)}. Сделайте скриншот этого текста — по нему я быстро починю.</div>`;}}
   else if(TAB==='areas')B.innerHTML=areasHTML(),bindAreas(B);
   else if(TAB==='lib')B.innerHTML=libHTML(),bindLib(B);
   else B.innerHTML=settingsHTML(),bindSettings(B);
@@ -2333,7 +2342,7 @@ function snapElev(x,y,e,from){const ev=EV(),tol=10/V.s,depDef=from?from.dep:(EVS
   for(const ly of lines){const dd=Math.abs(ly-y);if(dd<=bd+.01||(best&&best.kind==='face'&&Math.abs(best.p[1]-ly)<.5)){bd=dd;best={p:[best&&best.kind==='face'&&Math.abs(best.p[1]-ly)<.5?best.p[0]:x,ly],ref:null,dep:best?best.dep:depDef,kind:'level'};}}
   if(best)return best;return{p:[snapV(x),snapV(y)],ref:null,dep:depDef,kind:'grid'};}
 function newDim(a3,b3,refA,refB,plane){const d={id:uid('d'),level:P.activeLevel,name:`Замер ${(P.dims||[]).length+1}`,x1:a3[0],y1:a3[1],z1:a3[2],x2:b3[0],y2:b3[1],z2:b3[2],refA:refA||null,refB:refB||null,real:null,end:'B',mode:'auto',plane};
-  mutate(()=>{(P.dims=P.dims||[]).push(d);});toolPts=[];dimHover=null;setTool('select');select({kind:'dim',id:d.id});
+  mutate(()=>{(P.dims=P.dims||[]).push(d);});toolPts=[];dimHover=null;if(WMODE==='dims')setTool('measure',true);else setTool('select');select({kind:'dim',id:d.id});
   setTimeout(()=>{const f=document.getElementById('dReal');if(f){f.focus();f.select();}},60);
   toast('Замер поставлен. Введите реальное значение в «Свойствах» и нажмите «Подогнать план»',4000);}
 function measureClick(x,y,e){const s=snapDim(x,y,e,toolPts[0]),z0=lvl().elev;
@@ -3171,7 +3180,7 @@ async function roomReport(o){if(!o){toast('Выберите помещение')
   try{const w=window.open('','_blank');if(w){w.document.write(html);w.document.close();}}catch(e){}}
 
 /* =============================== команды =============================== */
-function delSel(){if(VLOCK){lockMsg();return;}if(GUEST&&((groupObjs()||[selObj()]).some(o=>o&&locked(o))||(selDim()&&BASEIDS().has(selDim().id)))){guestMsg();return;}if(MSEL.size>1){const ids=new Set(MSEL);mutate(()=>{P.objects=P.objects.filter(o=>!ids.has(o.id)&&!ids.has(o.wall));});MSEL.clear();SEL=null;attachGizmo();panelQ=true;toast(`Удалено: ${ids.size}`);return;}if(!SEL)return;const id=SEL.id;mutate(()=>{P.objects=P.objects.filter(o=>o.id!==id&&o.wall!==id);P.projectors=P.projectors.filter(p=>p.id!==id);P.dims=(P.dims||[]).filter(d=>d.id!==id);});SEL=null;attachGizmo();panelQ=true;}
+function delSel(){if(VLOCK&&!(WMODE==='dims'&&selDim())){lockMsg();return;}if(GUEST&&((groupObjs()||[selObj()]).some(o=>o&&locked(o))||(selDim()&&BASEIDS().has(selDim().id)))){guestMsg();return;}if(MSEL.size>1){const ids=new Set(MSEL);mutate(()=>{P.objects=P.objects.filter(o=>!ids.has(o.id)&&!ids.has(o.wall));});MSEL.clear();SEL=null;attachGizmo();panelQ=true;toast(`Удалено: ${ids.size}`);return;}if(!SEL)return;const id=SEL.id;mutate(()=>{P.objects=P.objects.filter(o=>o.id!==id&&o.wall!==id);P.projectors=P.projectors.filter(p=>p.id!==id);P.dims=(P.dims||[]).filter(d=>d.id!==id);});SEL=null;attachGizmo();panelQ=true;}
 let CLIP=null;
 function makeCopy(src,isProj){const c=deep(src);c.id=uid(isProj?'p':'o');if(!/копия/.test(c.name))c.name+=' копия';(isProj?P.projectors:P.objects).push(c);return c;}
 function dupSel(){if(VLOCK){lockMsg();return;}if(GUEST&&(groupObjs()||[selObj()]).some(o=>o&&locked(o))){guestMsg();return;}const G=groupObjs();if(G){const ids=[];mutate(()=>{for(const o of G)ids.push(makeCopy(o,false).id);});selectMany(ids);return;}const o=selObj(),p=selProj();if(!o&&!p)return;let c;mutate(()=>{c=makeCopy(o||p,!!p);});select({kind:p?'proj':'obj',id:c.id});toast('Копия на том же месте — перетащите её');}
@@ -3203,14 +3212,15 @@ function setMode(m){MODE=m;document.querySelectorAll('[data-mode]').forEach(b=>b
 const WM={build:{tools:['select','measure'],add:['wall','column','slab','beam','frame','rail','door','window','cut','cutout','stair','stairS','cyc','cycC','zone'],title:'Строительные элементы',hint:'Выберите элемент и кликните на плане или по полу в 3D'},
   proj:{tools:['select','aim'],add:'proj',title:'Добавить проектор',hint:'Проектор по умолчанию или готовая модель из библиотеки — затем клик на плане или по полу в 3D. Стены и остальное в этом режиме заблокированы'},
   decor:{tools:['select','measure'],add:['furn:table','furn:tableRound','furn:tablePed','furn:tablePanel','furn:coffee','furn:coffeeRound','furn:chair','furn:armchair','furn:sofa','furn:sofaL','furn:bench','furn:cabinet','furn:shelf','furn:plant','furn:pedestal','box','screen','model'],title:'Оформление',hint:'Мебель, растения, подиумы и модели из файлов. Из полезной площади не вычитаются'},
+  dims:{tools:['measure','select'],add:[],title:'Замеры',hint:'Замер — клик в начале и в конце (с привязкой к граням). Клик по готовому замеру выбирает его, концы можно тянуть. Остальные элементы в этом режиме не выбираются и не двигаются. Alt — начать замер прямо на линии другого замера'},
   elec:{tools:['select','measure'],add:Object.keys(ELEC).map(k=>'elec:'+k),title:'Электрика',hint:'Поставьте розетки, силовые точки и щиты, укажите щит/группу и фазу. Проекторы привязываются к группе в их свойствах (режим «Проекторы»)'},
   rooms:{tools:['select','measure'],add:[],title:'',hint:''}};
-function syncWM(){document.querySelectorAll('#wmodes [data-wm]').forEach(b=>{b.classList.toggle('on',b.dataset.wm===WMODE);if(b.dataset.wm==='rooms'||b.dataset.wm==='elec')b.style.display=GUEST?'none':'';});const M=WM[WMODE];
+function syncWM(){document.querySelectorAll('#wmodes [data-wm]').forEach(b=>{b.classList.toggle('on',b.dataset.wm===WMODE);if(b.dataset.wm==='rooms'||b.dataset.wm==='elec'||b.dataset.wm==='dims')b.style.display=GUEST?'none':'';});const M=WM[WMODE];
   $('#tools').innerHTML=TOOLS.filter(t=>M.tools.includes(t[0])).map(([t,n,k])=>`<button data-t="${t}" class="${TOOL===t?'on':''}" title="${n}${k?' ('+k+')':''}">${n}</button>`).join('');
   let items=GUEST&&WMODE==='build'?[['door','Дверной проём','◫'],['window','Окно','⊟']]:M.add==='proj'?[['projector','Проектор (по умолчанию)','◉'],...(P.library||[]).filter(l=>!/^ex\d+$/.test(l.id)).map(l=>['proj:'+l.id,l.name,'◎'])]:M.add.map(t=>ADD.find(a=>a[0]===t)).filter(Boolean);
   $('#addGrid').innerHTML=items.map(([t,n,i])=>`<button data-t="${t}" class="${TOOL===t?'on':''}"><i>${i}</i>${n}</button>`).join('');
-  $('#addTitle').textContent=M.title;$('#addSec').style.display=WMODE==='rooms'?'none':'';$('#secProj').style.display=WMODE==='proj'?'':'none';const ah=$('#addHint');if(ah)ah.textContent=M.hint;updElecSum();}
-function setWMode(m){if(!WM[m]||(GUEST&&m==='rooms'))m=GUEST?'decor':'build';if(m!=='proj'&&PMODE)setPMode(false);if(m!=='rooms'&&RMODE)setRMode(false);WMODE=m;if(m==='proj'&&!PMODE)setPMode(true);if(m==='rooms'&&!RMODE)setRMode(true);
+  $('#addTitle').textContent=M.title;$('#addSec').style.display=WMODE==='rooms'?'none':'';$('#addGrid').style.display=WMODE==='dims'?'none':'';$('#secProj').style.display=WMODE==='proj'?'':'none';const ah=$('#addHint');if(ah)ah.textContent=M.hint;updElecSum();}
+function setWMode(m){if(m==='dims'){if(P.settings.showDims===false){P.settings.showDims=true;try{syncDimsBtn();}catch(e){}}setTimeout(()=>{setTool('measure');select(null);rebuildQ=true;},0);}else if(WMODE==='dims'&&TOOL==='measure')setTimeout(()=>setTool('select'),0);if(!WM[m]||(GUEST&&m==='rooms'))m=GUEST?'decor':'build';if(m!=='proj'&&PMODE)setPMode(false);if(m!=='rooms'&&RMODE)setRMode(false);WMODE=m;if(m==='proj'&&!PMODE)setPMode(true);if(m==='rooms'&&!RMODE)setRMode(true);
   if(!WM[m].tools.includes(TOOL)&&!(m==='proj'&&TOOL==='projector'))setTool('select',true);lsSet('gp_wmode',m);syncWM();}
 document.querySelectorAll('#wmodes [data-wm]').forEach(b=>b.onclick=()=>setWMode(b.dataset.wm));
 $('#bGuestSave').onclick=guestSend;$('#bLock').onclick=()=>setLock(!VLOCK);if(window.GUEST_FILE)$('#bLock').style.display='none';else setTimeout(()=>setLock(true,true),0);$('#bMobSave').onclick=()=>saveNow();
