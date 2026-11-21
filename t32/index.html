@@ -2144,6 +2144,7 @@ function bindSettings(B){
 /* ----- списки слева ----- */
 const collapsed=new Set(['room']);
 function renderLists(){
+  try{ensureCodes(P);}catch(e){}
   syncWF();
   if(typeof WMODE!=='undefined'&&WMODE==='proj'&&$('#addGrid').children.length!==1+(P.library||[]).filter(l=>!/^ex\d+$/.test(l.id)).length)syncWM();
   $('#levelSel').innerHTML=[...P.levels].sort((a,b)=>a.elev-b.elev).map(l=>`<option value="${l.id}" ${l.id===P.activeLevel?'selected':''}>${esc(l.name)} · отм. ${num(l.elev)}</option>`).join('');
@@ -3482,8 +3483,7 @@ function openHelp(sec){
 
 /* =============================== сохранение =============================== */
 let DBOK=false,DB=null,saveT=null,saving=false,libDirty=false,lastLibJSON='';
-const CODEP={wall:'Ст',column:'К',slab:'Пл',beam:'Б',rail:'Пе',cutout:'Вр',frame:'Кр',screen:'Э',box:'Пд',stair:'Л',cyc:'Ц',cycC:'Цу',model:'М',furn:'Мб',zone:'З',room:'Пм'};
-function codePfx(o){if(o.lib!==undefined&&o.type===undefined)return 'П';
+function codePfx(o){const CODEP={wall:'Ст',column:'К',slab:'Пл',beam:'Б',rail:'Пе',cutout:'Вр',frame:'Кр',screen:'Э',box:'Пд',stair:'Л',cyc:'Ц',cycC:'Цу',model:'М',furn:'Мб',zone:'З',room:'Пм'};if(o.lib!==undefined&&o.type===undefined)return 'П';
   if(o.type==='elec'){const k=o.ek||'outlet';return k==='outlet'?'Р':k==='projOut'?'РП':k==='panel'?'Щ':(k==='cee32_3'||k==='cee63_3')?'И':'С';}
   if(o.type==='opening')return o.kind==='window'?'Ок':o.kind==='door'?'Дв':'Пр';return CODEP[o.type]||'Е';}
 function codeXY(o){return o.x!=null?[+o.x||0,+o.y||0]:o.x1!=null?[(o.x1+o.x2)/2,(o.y1+o.y2)/2]:o.pts&&o.pts.length?[o.pts[0][0]??o.pts[0].x,o.pts[0][1]??o.pts[0].y]:[0,0];}
