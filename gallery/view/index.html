@@ -899,6 +899,29 @@ function levelBBox(lid){let a=[1e9,1e9,-1e9,-1e9],any=false;const add=(x,y)=>{a[
   return any?a:null;}
 
 // Брус вдоль локальной X с косыми торцами: cs/ce — срез начала/конца в плане (°), csv/cev — по вертикали (°)
+/* фигурные проёмы: свод сверху/снизу, круг/овал */
+const OPSHAPE={rect:'Прямоугольный',archTop:'Свод сверху (арка)',archBottom:'Свод снизу',archBoth:'Своды сверху и снизу',round:'Круг / овал'};
+const opShape=o=>OPSHAPE[o.shape]?o.shape:'rect';
+function opRise(o){const sh=opShape(o),W=+o.w,H=+o.h;if(sh==='round')return H/2;const mx=sh==='archBoth'?H/2:H;return Math.max(1,Math.min(mx,o.archH!=null&&o.archH!==''?+o.archH:Math.min(W/2,mx)));}
+/* контур проёма (локально: x от -W/2 до W/2, y от 0 до H), inset — отступ внутрь */
+function opOutline(o,ins=0,N=28){const sh=opShape(o),W=+o.w-2*ins,H=+o.h-2*ins,hw=W/2,r=Math.max(.5,opRise(o)-ins),pts=[];if(W<=1||H<=1)return[];const y0=ins;
+  const arc=(cy,ry,a0,a1)=>{for(let k=0;k<=N;k++){const a=a0+(a1-a0)*k/N;pts.push([hw*Math.cos(a),y0+cy+ry*Math.sin(a)]);}};
+  if(sh==='round'){arc(H/2,H/2,0,Math.PI*2);pts.pop();return pts;}
+  if(sh==='archTop'){pts.push([-hw,0+y0],[hw,0+y0]);arc(H-r,r,0,Math.PI);return pts;}
+  if(sh==='archBottom'){pts.push([hw,H+y0],[-hw,H+y0]);arc(r,r,Math.PI,Math.PI*2);return pts;}
+  if(sh==='archBoth'){arc(r,r,Math.PI,Math.PI*2);arc(H-r,r,0,Math.PI);return pts;}
+  return[[-hw,y0],[hw,y0],[hw,H+y0],[-hw,H+y0]];}
+function opArea(o){const sh=opShape(o),W=+o.w,H=+o.h,r=opRise(o),seg=Math.PI*W*r/4;if(sh==='round')return Math.PI*W*H/4;if(sh==='archTop'||sh==='archBottom')return W*(H-r)+seg;if(sh==='archBoth')return W*(H-2*r)+2*seg;return W*H;}
+/* «закладки» стены между прямоугольной дырой и фигурным проёмом: многоугольники в координатах проёма */
+function opFillers(o,N=20){const sh=opShape(o),W=+o.w,H=+o.h,hw=W/2,r=opRise(o),out=[];if(sh==='rect')return out;
+  /* четверть-закладка: угол (sx·hw, Y), дуга эллипса с центром (0,cy), полуосями hw×ry от горизонтали к вертикали */
+  const q=(sx,sy,cy,ry)=>{const Y=cy+sy*ry,pts=[[sx*hw,Y],[sx*hw,cy]];for(let k=1;k<N;k++){const t=k/N*Math.PI/2;pts.push([sx*hw*Math.cos(t),cy+sy*ry*Math.sin(t)]);}pts.push([0,Y]);return pts;};
+  if(sh==='archTop'||sh==='archBoth')out.push(q(-1,1,H-r,r),q(1,1,H-r,r));
+  if(sh==='archBottom'||sh==='archBoth')out.push(q(-1,-1,r,r),q(1,-1,r,r));
+  if(sh==='round')out.push(q(-1,1,H/2,H/2),q(1,1,H/2,H/2),q(-1,-1,H/2,H/2),q(1,-1,H/2,H/2));
+  return out;}
+function polyExtrude(pts,depth){const sh=new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],p[1])));const g=new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:false,curveSegments:1});g.translate(0,0,-depth/2);return g;}
+function ringExtrude(outer,inner,depth){const sh=new THREE.Shape(outer.map(p=>new THREE.Vector2(p[0],p[1])));if(inner&&inner.length>2)sh.holes.push(new THREE.Path(inner.map(p=>new THREE.Vector2(p[0],p[1]))));const g=new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:false,curveSegments:1});g.translate(0,0,-depth/2);return g;}
 function prismGeo(x0,x1,y0,y1,th,cs=0,ce=0,csv=0,cev=0){
   const ts=Math.tan(clamp(cs,-80,80)*DEG),te=Math.tan(clamp(ce,-80,80)*DEG),tsv=Math.tan(clamp(csv,-80,80)*DEG),tev=Math.tan(clamp(cev,-80,80)*DEG),ym=(y0+y1)/2,z=th/2;
   const S=(y,zz)=>new THREE.Vector3(x0+ts*zz+tsv*(y-ym),y,zz),Ev=(y,zz)=>new THREE.Vector3(x1+te*zz+tev*(y-ym),y,zz);
@@ -913,6 +936,18 @@ const hasCut=o=>!!(o.cutA||o.cutB||o.cutAv||o.cutBv);
 function buildOpening3D(o,E){const i=opInfo(o);if(!i||o.kind==='hole'||i.w.hidden)return;const w=i.w,th=w.thick,z0=E+(w.base||0)+o.sill,g=new THREE.Group();g.position.set(i.cx,z0,i.cy);g.rotation.y=-Math.atan2(i.uy,i.ux);recvGroup.add(g);
   const B=(sx,sy,sz,x,y,z,col,par)=>{const m=addRecv(new THREE.BoxGeometry(Math.max(.5,sx),Math.max(.5,sy),Math.max(.5,sz)),col,o.id,par||g);m.position.set(x,y,z);return m;};
   const W=o.w,H=o.h;
+  if(opShape(o)!=='rect'){const sh=opShape(o),dm=o.kind==='door'?(DOORMAT[o.dmat||'wood']||DOORMAT.wood):null,fc=dm?dm.box:'#e6e6e6',p=o.kind==='door'?5:Math.max(2,+o.prof||6),d=Math.min(8,th),r=opRise(o);
+    try{addRecv(ringExtrude(opOutline(o,0),opOutline(o,p),o.kind==='door'?th+1:d),fc,o.id,g);}catch(e){}
+    if(o.kind==='window'){const cols=Math.max(1,o.cols|0||1),rows=Math.max(1,o.rows|0||1);
+      if(sh==='archTop'||sh==='archBoth')B(W-2*p,p*.7,d*.8,0,H-r,0,fc);if(sh==='archBottom'||sh==='archBoth')B(W-2*p,p*.7,d*.8,0,r,0,fc);
+      const yA=sh==='archBottom'||sh==='archBoth'?r:p,yB=sh==='archTop'||sh==='archBoth'?H-r:H-p;
+      if(sh!=='round'){for(let c=1;c<cols;c++)B(p*.7,yB-yA,d*.8,-W/2+W*c/cols,(yA+yB)/2,0,fc);for(let rr=1;rr<rows;rr++)B(W-2*p,p*.7,d*.8,0,yA+(yB-yA)*rr/rows,0,fc);}
+      else{if(cols>1)B(p*.7,H-2*p,d*.8,0,H/2,0,fc);if(rows>1)B(W-2*p,p*.7,d*.8,0,H/2,0,fc);}}
+    else if(o.kind==='door'){const LC=o.leafColor||dm.leaf,GL='#9cc3d5';const top=sh==='archTop'||sh==='archBoth'?H-r:H-p,bot=sh==='archBottom'||sh==='archBoth'?r:0;
+      if(sh==='archTop'||sh==='archBoth'){B(W-2*p,p,th*.6,0,top,0,fc);try{const ins=opOutline(o,p).filter(q=>q[1]>=top-.01);if(ins.length>2){const m=addRecv(polyExtrude([[-W/2+p,top],[W/2-p,top],...ins.filter(q=>q[1]>top+.01).sort((a,b)=>b[0]-a[0])],1.2),o.dstyle&&o.dstyle!=='solid'&&o.dstyle!=='panels'?GL:LC,o.id,g);}}catch(e){}}
+      const lh=Math.max(10,top-bot-p/2),s=o.side===-1?-1:1,a=Math.max(0,Math.min(180,+(o.openA??30)))*DEG,pv=new THREE.Group(),hx=o.hingeR?W/2-p:-W/2+p,dx=o.hingeR?-1:1;pv.position.set(hx,bot,s*(th/2-2));pv.rotation.y=-s*dx*a;g.add(pv);
+      B(W-2*p,lh,dm.t,dx*(W-2*p)/2,lh/2,0,LC,pv);for(const sd of[-1,1])B(3,2,12,dx*(W-2*p-8),lh*.47,sd*(dm.t/2+3),dm.handle,pv);}
+    return;}
   if(o.kind==='door'){const f=5,fc=(DOORMAT[o.dmat||'wood']||{}).box||'#6e6458';B(f,H,th+1,-W/2+f/2,H/2,0,fc);B(f,H,th+1,W/2-f/2,H/2,0,fc);B(W,f,th+1,0,H-f/2,0,fc);
     const n=+o.leaves===2?2:1,lw=(W-2*f)/n,lh=H-f-1,s=o.side===-1?-1:1,a=Math.max(0,Math.min(180,+(o.openA??30)))*DEG,zf=s*(th/2-2);
     const MAT=DOORMAT[o.dmat||'wood']||DOORMAT.wood,LC=o.leafColor||MAT.leaf,PF=MAT.prof,LT=MAT.t,GL='#9cc3d5',st=o.dstyle||'solid',gp=Math.max(15,Math.min(90,+(o.glassPct??40)))/100;
@@ -970,6 +1005,7 @@ function build3D(o,E){
     const B=(x0,x1,y0,y1)=>{if(x1-x0<.5||y1-y0<.5)return;addRecv(prismGeo(x0-len/2,x1-len/2,y0-H/2,y1-H/2,o.thick,x0<.01?o.cutA||0:0,x1>len-.01?o.cutB||0:0,x0<.01?o.cutAv||0:0,x1>len-.01?o.cutBv||0:0),o.color,o.id,g);};
     const ops=wallOpenings(o).map(q=>{const i=opInfo(q);return{a:clamp(i.at-q.w/2,0,len),b:clamp(i.at+q.w/2,0,len),s:clamp(q.sill,0,H),t:clamp(q.sill+q.h,0,H)};}).sort((p,q)=>p.a-q.a);
     let x=0;for(const q of ops){B(x,Math.max(x,q.a),0,H);B(Math.max(x,q.a),q.b,0,q.s);B(Math.max(x,q.a),q.b,q.t,H);x=Math.max(x,q.b);}B(x,len,0,H);
+    for(const q of wallOpenings(o)){if(opShape(q)==='rect')continue;const i=opInfo(q);if(!i)continue;for(const F of opFillers(q)){try{const ge=polyExtrude(F,o.thick-.2);const m=addRecv(ge,o.color,o.id,g);m.position.set(i.at-len/2,q.sill-H/2,0);}catch(e){}}}
     return;}
   if(t==='rail'){const dx=o.x2-o.x1,dy=o.y2-o.y1,len=Math.hypot(dx,dy);if(len<1)return;const g=new THREE.Group();g.position.set((o.x1+o.x2)/2,E+(o.base||0),(o.y1+o.y2)/2);g.rotation.y=-Math.atan2(dy,dx);recvGroup.add(g);
     const p=Math.max(1,+o.w||5),H=Math.max(10,+o.h||100),dz=+o.dz||0,np=Math.max(2,o.posts|0||2),nr=Math.max(0,o.rails|0),zt=t=>dz*t,L2=Math.hypot(len,dz),pitch=Math.atan2(dz,len);
@@ -1727,7 +1763,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.29.0';let lastSelKey='';
+const APPVER='1.30.0';let lastSelKey='';
 function renderPanel(){
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
@@ -1756,6 +1792,10 @@ function propsHTML(){
       +`<div class="fr"><label>Цвет полотна</label><input type="color" data-k="leafColor" value="${o.leafColor||(DOORMAT[o.dmat||'wood']||DOORMAT.wood).leaf}"> <button id="bLeafReset" title="Цвет по материалу">↺</button></div>`
       +`<div class="row">${[['pvc','glassTop','🚪 ПВХ, стекло сверху'],['pvc','solid','ПВХ глухая'],['wood','panels','Деревянная филёнчатая'],['alu','glass','Алюминий, стекло'],['metal','solid','Металлическая входная']].map(([m,st,t])=>`<button data-dpre="${m}|${st}">${t}</button>`).join('')}</div>`;
       h+=`<div class="row"><button id="bDoorSide" title="С какой стороны стены створка">⇅ ${o.slide?'Полотно с другой стороны стены':'Открывать в другую сторону'}</button>${+o.leaves===2?'':`<button id="bDoorHinge" title="">⇄ ${o.slide?'Откатывать в другую сторону':'Петли с другой стороны'}</button>`}</div><div class="note">На плане толстая линия — створка, пунктирная дуга — как она открывается.</div>`;}
+    h+=fr('Форма',`<select data-k="shape">${Object.entries(OPSHAPE).map(([k,v])=>`<option value="${k}" ${opShape(o)===k?'selected':''}>${v}</option>`).join('')}</select>`);
+    if(opShape(o)!=='rect'&&opShape(o)!=='round')h+=fr('Высота свода',nIn('archH',r1(opRise(o)),'min="1" step="1"'),'см')+`<div class="row"><button id="bArchSemi" title="Свод = половина ширины">◠ Полукруглый</button><button id="bArchFlat" title="Пологий свод — 1/4 ширины">⌒ Пологий</button></div>`;
+    if(opShape(o)==='round')h+=`<div class="row"><button id="bRoundCirc" title="Высота = ширине">◯ Ровный круг (высота = ширине)</button></div>`;
+    if(opShape(o)!=='rect')h+=`<div class="note">Площадь проёма: ${num(opArea(o)/1e4,2)} м² (учтена в площадях стен).</div>`;
     if(o.kind==='window')h+=fr('Вертикальных секций',nIn('cols',o.cols||Math.max(1,Math.round(o.w/120)),'min="1" step="1"'),'шт')+fr('Горизонтальных секций',nIn('rows',o.rows||1,'min="1" step="1"'),'шт')+fr('Профиль рамы',nIn('prof',o.prof||6,'min="2"'),'см');
     h+=`<div class="note">${i?`Стена «${esc(i.w.name)}», длина ${num(i.L)} см, толщина ${num(i.w.thick)} см. До конца стены: ${num(i.L-i.at-o.w/2)} см.`:'Стена удалена.'} Двигайте проём вдоль стены мышью на плане или стрелкой в 3D.</div>`;
     h+=`<div class="row"><button id="bDup">Дублировать</button><button id="bDel" class="danger">Удалить</button><button id="bWallSel">Выбрать стену</button></div></div>`;return h;}
@@ -1849,6 +1889,7 @@ function bindProps(B){
   {const fp=B.querySelector('#furnPreset');if(fp)fp.onchange=()=>mutate(()=>{const F=FURN[fp.value];if(!F)return;o.preset=fp.value;o.ft=F.ft;Object.assign(o,deep(F.p||{}));if(o.name===FURN[o.preset]?.n||Object.values(FURN).some(x=>x.n===o.name))o.name=F.n;});}
   {const on=B.querySelector('#objOn');if(on)on.onchange=()=>mutate(()=>{const rel=(o.base||0)-onOff(o);if(on.value)o.on=on.value;else delete o.on;o.base=rel+onOff(o);});}
   {const rf=B.querySelector('#opRef');if(rf)rf.onchange=()=>mutate(()=>{const rel=o.sill-opRefOff(o);if(rf.value)o.ref=rf.value;else delete o.ref;o.sill=Math.max(0,rel+opRefOff(o));});}
+  {const a1=B.querySelector('#bArchSemi');if(a1)a1.onclick=()=>mutate(()=>{o.archH=r1(o.w/2);});const a2=B.querySelector('#bArchFlat');if(a2)a2.onclick=()=>mutate(()=>{o.archH=r1(o.w/4);});const a3=B.querySelector('#bRoundCirc');if(a3)a3.onclick=()=>mutate(()=>{o.h=o.w;});}
   B.querySelectorAll('[data-dpre]').forEach(b=>b.onclick=()=>{const[m,st]=b.dataset.dpre.split('|');mutate(()=>{o.dmat=m;o.dstyle=st;delete o.leafColor;if(st==='glassTop'&&o.glassPct==null)o.glassPct=40;});});{const lr=B.querySelector('#bLeafReset');if(lr)lr.onclick=()=>mutate(()=>{delete o.leafColor;});}
   {const ds=B.querySelector('#bDoorSide');if(ds)ds.onclick=()=>mutate(()=>{o.side=o.side===-1?1:-1;});const dh=B.querySelector('#bDoorHinge');if(dh)dh.onclick=()=>mutate(()=>{o.hingeR=!o.hingeR;});}
   B.querySelectorAll('[data-railst]').forEach(b=>b.onclick=()=>{const st=objById(b.dataset.railst);if(!st)return;const n=Math.max(1,st.steps|0),rs=st.h/n,SB=stairB(st),sd=b.dataset.side?1:-1,hw=st.w/2-(o.w||5)/2,c=Math.cos(st.rot*DEG),sn=Math.sin(st.rot*DEG),P2=(lx,lz)=>[st.x+lx*c-lz*sn,st.y+lx*sn+lz*c];
@@ -1985,7 +2026,7 @@ function areasHTML(){
     for(const o of zones){const A=o.w*o.d/1e4;if(o.reno)rA+=A;h+=`<tr><td><a href="#" data-sel="${o.id}" style="color:inherit">${esc(o.name)}</a> <span class="u">(зона)</span></td><td>${num(A,2)}</td><td>—</td><td>—</td><td>—</td><td><input type="checkbox" data-reno="${o.id}" ${o.reno?'checked':''}></td></tr>`;}
     if(!rooms.length&&!zones.length)h+=`<tr><td colspan="6" class="empty">Нет помещений — инструмент «Помещение по клику».</td></tr>`;
     h+=`<tr><th>Итого помещения</th><th>${num(tA,2)}</th><th>${num(tC,2)}</th><th>${num(tW,1)}</th><th></th><th></th></tr></table>`;
-    const opA=P.objects.filter(o=>o.level===L.id&&o.type==='opening'&&opWall(o)).reduce((s,o)=>s+o.w*o.h,0);
+    const opA=P.objects.filter(o=>o.level===L.id&&o.type==='opening'&&opWall(o)).reduce((s,o)=>s+opArea(o),0);
     const wl=walls.reduce((s,o)=>s+Math.hypot(o.x2-o.x1,o.y2-o.y1),0),ws=walls.reduce((s,o)=>s+Math.hypot(o.x2-o.x1,o.y2-o.y1)*objH(o),0)-opA,wv=walls.reduce((s,o)=>s+Math.hypot(o.x2-o.x1,o.y2-o.y1)*objH(o)*o.thick,0);
     h+=`<div class="kv" style="margin-top:8px"><span>Под ремонт: пол / потолок</span><span class="big" style="color:#ffcf87">${num(rA,2)} м²</span><span>Под ремонт: стены (периметр × высоту, без вычета проёмов)</span><span>${num(rW,1)} м²</span>
       <span>Стены: суммарная длина</span><span>${num(wl/100,1)} м</span><span>Стены: поверхность с двух сторон (за вычетом проёмов)</span><span>${num(ws*2/1e4,1)} м²</span><span>Стены: объём кладки</span><span>${num(wv/1e6,2)} м³</span>
@@ -2652,7 +2693,7 @@ function autoRoomAt(x,y,opt={}){const fail=(m,ms)=>{if(!opt.dry)toast(m,ms||4000
 function roomOpeningsArea(o){const L=lvById(o.level),b0=o.base||0,b1=b0+roomH(o);let a=0;
   for(const q of P.objects){if(q.type!=='opening'||q.level!==o.level)continue;const i=opInfo(q);if(!i)continue;let near=false;
     for(let k=0;k<o.pts.length&&!near;k++){const p1=o.pts[k],p2=o.pts[(k+1)%o.pts.length];if(segDist(i.cx,i.cy,p1[0],p1[1],p2[0],p2[1])<=i.w.thick/2+12)near=true;}
-    if(!near)continue;const z0=(i.w.base||0)+q.sill,z1=z0+q.h,ov=Math.max(0,Math.min(z1,b1)-Math.max(z0,b0));a+=q.w*ov;}return a;}
+    if(!near)continue;const z0=(i.w.base||0)+q.sill,z1=z0+q.h,ov=Math.max(0,Math.min(z1,b1)-Math.max(z0,b0));a+=q.h>0?opArea(q)*ov/q.h:0;}return a;}
 function roomH(o){const L=lvById(o.level);return o.h!=null&&o.h!==''?+o.h:Math.max(1,L.height-(o.base||0));}
 function rayUp(x,y,z){const r=new THREE.Raycaster(new THREE.Vector3(x,z+2,y),new THREE.Vector3(0,1,0),0,5000);r.layers.enableAll();const h=r.intersectObjects(RECV,false)[0];return h?h.point.y:null;}
 function autoRoomSmart(x,y,zFloor,clip){autoRoomAt(x,y,roomOptsAt(x,y,zFloor,clip));}
