@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Арт-галерея — силовая электрика, 3D</title>
 <style>
 html,body{margin:0;height:100%;background:#16181c;color:#e8e8e8;font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden;touch-action:none}
-#c{position:fixed;inset:0}#l2{position:fixed;inset:0;pointer-events:none;isolation:isolate;z-index:1;overflow:hidden}
+#c{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block}#l2{position:fixed;inset:0;pointer-events:none;isolation:isolate;z-index:1;overflow:hidden}
 #bar{position:fixed;left:8px;right:8px;top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;z-index:5}
 #bar b{flex:1 1 100%;font-size:15px;text-shadow:0 1px 3px #000}
 button{font:inherit;color:#e8e8e8;background:#2a2e35cc;border:1px solid #444b55;border-radius:8px;padding:6px 10px;white-space:normal;line-height:1.2;min-height:34px;cursor:pointer}
@@ -13,7 +13,7 @@ button.on{background:#2d4f7c;border-color:#5b8fd6}
 #info .x{float:right;min-height:0;padding:2px 8px}
 #hint{position:fixed;right:8px;bottom:8px;font-size:12px;color:#9aa;z-index:2;text-align:right;max-width:60%}
 #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;z-index:9;background:#16181c}
-.lb{font:600 11px/1.2 ui-monospace,Consolas,monospace;color:#fff;background:rgba(0,0,0,.74);border:1.5px solid #888;border-radius:4px;padding:1px 5px;white-space:nowrap;pointer-events:auto;cursor:pointer;transform:translateY(-50%)}
+.lb{font:600 11px/1.2 ui-monospace,Consolas,monospace;color:#fff;background:rgba(0,0,0,.74);border:1.5px solid #888;border-radius:4px;padding:1px 5px;white-space:nowrap;pointer-events:auto;cursor:pointer}
 .lb.rt{font-weight:500;font-size:10px}.lb.rm{background:rgba(30,60,90,.7);border-color:#4aa3df}.lb.dim{opacity:.15}
 @media (max-width:640px){.lb{font-size:10px}#hint{display:none}}
 </style>
@@ -39,7 +39,7 @@ function home(){const c=box.getCenter(new THREE.Vector3()),s=box.getSize(new THR
 function top(){const c=box.getCenter(new THREE.Vector3()),s=box.getSize(new THREE.Vector3()),m=Math.max(s.x,s.z);C.target.copy(c);cam.position.set(c.x,c.y+m*1.25,c.z+1);C.update();}
 document.getElementById('bHome').onclick=home;document.getElementById('bTop').onclick=top;
 const info=document.getElementById('info');function show(t){info.innerHTML='<button class="x">✕</button>'+t;info.hidden=false;info.querySelector('.x').onclick=()=>info.hidden=true;}
-const LB=[],dotG=new THREE.SphereGeometry(3,10,8);for(const l of D.labels){if(l.a){const g=new THREE.Group(),col=new THREE.Color(l.c||'#888'),ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...l.a),new THREE.Vector3(...l.p)]),new THREE.LineBasicMaterial({color:col,depthTest:false,transparent:true}));ln.renderOrder=999;const dot=new THREE.Mesh(dotG,new THREE.MeshBasicMaterial({color:col,depthTest:false,transparent:true}));dot.position.set(...l.a);dot.renderOrder=999;g.add(ln,dot);S.add(g);l._ln=g;}const d=document.createElement('div');d.className='lb '+l.k;d.textContent=l.t;d.style.borderColor=l.c||'#888';d.onclick=e=>{e.stopPropagation();show(l.info||l.t);if(l.lines&&l.lines.length===1)hi(l.lines[0]);};const o=new CSS2DObject(d);o.position.set(...l.p);S.add(o);LB.push({o,d,l});}
+const LB=[],dotG=new THREE.SphereGeometry(3,10,8);for(const l of D.labels){if(l.a){const g=new THREE.Group(),col=new THREE.Color(l.c||'#888'),ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...l.a),new THREE.Vector3(...l.p)]),new THREE.LineBasicMaterial({color:col,depthTest:false,transparent:true}));ln.renderOrder=999;const dot=new THREE.Mesh(dotG,new THREE.MeshBasicMaterial({color:col,depthTest:false,transparent:true}));dot.position.set(...l.a);dot.renderOrder=999;g.add(ln,dot);S.add(g);l._ln=g;}const d=document.createElement('div');d.className='lb '+l.k;d.textContent=l.t;d.style.borderColor=l.c||'#888';d.onclick=e=>{e.stopPropagation();show(l.info||l.t);if(l.lines&&l.lines.length===1)hi(l.lines[0]);};const o=new CSS2DObject(d);if(l.a)o.center.set(.5,1);o.position.set(...l.p);S.add(o);LB.push({o,d,l});}
 const vis={pt:true,rt:true,rm:false};
 const MAXD={pt:1900,rt:1300,rm:5000},_v=new THREE.Vector3();const RC=new THREE.Raycaster();function hidden(p){const d=cam.position.distanceTo(p);RC.set(cam.position,p.clone().sub(cam.position).normalize());RC.near=0;RC.far=Math.max(0,d-8);return RC.intersectObjects(OCC,false).length>0;}
 function upd(){for(const x of LB){const sel=!!cur&&!!x.l.lines&&x.l.lines.includes(cur);_v.set(...(x.l.a||x.l.p));const near=cam.position.distanceTo(_v)<MAXD[x.l.k];const on=vis[x.l.k]&&(near||sel)&&(sel||!x.l.a||!hidden(_v));x.o.visible=on;x.d.style.display=on?'':'none';if(x.l._ln)x.l._ln.visible=on;x.d.classList.toggle('dim',!!cur&&!!x.l.lines&&!x.l.lines.includes(cur));}}
