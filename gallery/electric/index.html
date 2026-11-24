@@ -44,7 +44,7 @@ const OCC=[],BLD=[],SMP=[],LG={};/* LG — копии кабелей повер�
         if(z.x>=z.y&&z.x>=z.z)P.push(bb.min.x,c.y,c.z,bb.max.x,c.y,c.z);else if(z.y>=z.x&&z.y>=z.z)P.push(c.x,bb.min.y,c.z,c.x,bb.max.y,c.z);else P.push(c.x,c.y,bb.min.z,c.x,c.y,bb.max.z);}}
     if(!P.length)continue;const gg=new LineSegmentsGeometry();gg.setPositions(P);const mt=new LineMaterial({color:arr[0].material.color.getHex(),linewidth:2.5,transparent:true,opacity:.95,depthTest:false,depthWrite:false});mt.resolution.set(innerWidth,innerHeight);
     const ls=new LineSegments2(gg,mt);ls.renderOrder=990;ls.frustumCulled=false;S.add(ls);(LG[k]||(LG[k]=[])).push(ls);}
-  addEventListener('resize',()=>{for(const a of Object.values(LG))for(const l of a)l.material.resolution.set(innerWidth,innerHeight);});
+  window.__dbg={S,LG,LM,cam,R};addEventListener('resize',()=>{for(const a of Object.values(LG))for(const l of a)l.material.resolution.set(innerWidth,innerHeight);});
   box=new THREE.Box3().setFromObject(g.scene);home();document.getElementById('load').remove();},e=>{document.getElementById('load').textContent='Не удалось открыть модель: '+e;});
 function home(){const c=box.getCenter(new THREE.Vector3()),s=box.getSize(new THREE.Vector3()),m=Math.max(s.x,s.z);C.target.copy(c);cam.position.set(c.x-m*.45,c.y+m*.85,c.z+m*.75);C.update();}
 function top(){const c=box.getCenter(new THREE.Vector3()),s=box.getSize(new THREE.Vector3()),m=Math.max(s.x,s.z);C.target.copy(c);cam.position.set(c.x,c.y+m*1.25,c.z+1);C.update();}
