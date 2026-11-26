@@ -210,7 +210,7 @@ kbd{font-family:var(--mono);font-size:11px;background:#333;border:1px solid #555
         <label class="wflab" title="На какой пол ставятся новые элементы. Всё, что ниже выбранного пола, на плане бледнее"><span style="font-size:11px;opacity:.75">Пол:</span> <select id="wfloor2"></select></label><button id="bUnder" title="Подложка: исходный PDF (он не в масштабе)">Подложка</button>
         <button id="bDims" title="Размеры всех стен">Размеры</button>
       </div>
-      <div class="ovbar right"><select class="routeSel" title="Трассы кабелей: пол (каналы / трубы в стяжке) и потолок"></select><select class="pviewSel" title="Какие проекторы показывать (короба питания скрываются вместе с ними)"></select><button class="bLab lockok" title="Какие подписи показывать на плане и в 3D">🏷 Подписи ▾</button><button id="bPlanPng" title="Сохранить план картинкой">Снимок плана</button></div>
+      <div class="ovbar right"><select class="routeSel" title="Трассы кабелей: пол (каналы / трубы в стяжке) и потолок"></select><select class="pviewSel" title="Какие проекторы показывать (короба питания скрываются вместе с ними)"></select><button class="bLab lockok" title="Какие подписи показывать на плане и в 3D">🏷 Подписи ▾</button><button id="bPlanPng" title="Сохранить план картинкой">Скриншот плана (картинка)</button></div>
       <div class="paneTitle" id="pane2dTitle">2D план · колесо — зум · правая кнопка или пробел — сдвиг вида · тянуть по пустому — рамка выбора · Shift/Ctrl+клик — добавить в выбор · G — перенос по точкам · Alt — без привязки · F1 — справка</div>
     </div>
     <div class="gut" id="gutV" title="Тяните — соотношение 2D/3D · двойной клик — поровну"></div>
@@ -219,7 +219,7 @@ kbd{font-family:var(--mono);font-size:11px;background:#333;border:1px solid #555
       <div id="css2d"></div>
       <div class="ovbar"><select id="viewSel" title="Вид камеры: 5 — 3D, 1 — спереди, 3 — справа, 7 — сверху">
         <option value="persp">Вид: 3D</option><option value="front">Вид: спереди</option><option value="back">Вид: сзади</option><option value="left">Вид: слева</option><option value="right">Вид: справа</option><option value="top">Вид: сверху</option></select></div>
-      <div class="ovbar right"><select class="routeSel" title="Трассы кабелей: пол (каналы / трубы в стяжке) и потолок"></select><select class="pviewSel" title="Какие проекторы показывать (короба питания скрываются вместе с ними)"></select><button id="bShowDims" title="Скрыть / показать замеры в 3D и на плане">Скрыть замеры</button><button class="bLab lockok" title="Какие подписи показывать на плане и в 3D">🏷 Подписи ▾</button><button id="bRays" class="on" title="Показывать лучи и раскрытие проекторов">Лучи</button><button id="bShot" title="Снимок 3D">Снимок</button></div>
+      <div class="ovbar right"><select class="routeSel" title="Трассы кабелей: пол (каналы / трубы в стяжке) и потолок"></select><select class="pviewSel" title="Какие проекторы показывать (короба питания скрываются вместе с ними)"></select><button id="bShowDims" title="Скрыть / показать замеры в 3D и на плане">Скрыть замеры</button><button class="bLab lockok" title="Какие подписи показывать на плане и в 3D">🏷 Подписи ▾</button><button id="bRays" class="on" title="Показывать лучи и раскрытие проекторов">Лучи</button><button id="bShot" title="Скриншот 3D (картинка)">Скриншот</button></div>
       <canvas id="legend"></canvas><div id="legendTx"></div>
       <div id="hud"></div><div id="viewTag" style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(0,0,0,.7);border:1px solid #555;padding:4px 10px;border-radius:6px;font:12px var(--mono);display:none;z-index:5;white-space:nowrap"></div>
       <div class="paneTitle">3D · ЛКМ — вращать · ПКМ — сдвиг · колесо — к курсору · Alt — быстрее · F1 — справка</div>
@@ -2382,7 +2382,7 @@ function virtualSet(o,k,v){
   if(k==='ang'){const L=Math.hypot(o.x2-o.x1,o.y2-o.y1);o.x2=o.x1+Math.cos(v*DEG)*L;o.y2=o.y1+Math.sin(v*DEG)*L;}
   if(k==='zoomPct'){o.zoom=v/100;}
 }
-const APPVER='1.67.69';let lastSelKey='';
+const APPVER='1.67.71';let lastSelKey='';
 function renderPanel(){syncCov();
   try{renderRemote();}catch(e){console.error(e);}
   const B=$('#tabBody');lastSelKey=SEL?SEL.kind+':'+SEL.id+':'+(SEL.sub||''):'';
@@ -4187,7 +4187,7 @@ function captureShot({labels,res,clean}){
   toast(`Готовлю снимок ${W}×${H}…`);
   c.toBlob(b=>b&&saveFile(`${P.name} — 3D ${W}x${H}${labels?' с подписями':''}.png`,b),'image/png');}
 let shotRes=5000,shotClean=true;
-function shotDialog(kind){openModal(`<h2>${kind==='3d'?'Снимок 3D':'Снимок плана'}</h2><div class="note">Сохранить картинку ${kind==='3d'?'текущего вида 3D':'текущего этажа на плане'}. Стрелки и ручки редактирования в снимок не попадают.</div>
+function shotDialog(kind){openModal(`<h2>${kind==='3d'?'Скриншот 3D (картинка)':'Скриншот плана (картинка)'}</h2><div class="note">Сохранить картинку ${kind==='3d'?'текущего вида 3D':'текущего этажа на плане'}. Стрелки и ручки редактирования в снимок не попадают.</div>
   ${fr('Разрешение',`<select id="shRes"><option value="5000">5000 px по длинной стороне</option><option value="8000">8000 px по длинной стороне</option><option value="0">как на экране</option></select>`)}
   <div class="note">Картинка заново отрисовывается в выбранном размере, подписи масштабируются вместе с ней. Пропорции — как у окна ${kind==='3d'?'3D':'плана'}.</div>
   ${kind==='3d'?`<label style="display:flex;gap:6px;align-items:center;margin:4px 0;white-space:normal"><input type="checkbox" id="shClean" ${shotClean?'checked':''}> чистый вид дизайна: без контуров и заливок покрытия проекторов</label>`:''}
@@ -4266,9 +4266,9 @@ function saveNow(){clearTimeout(saveT);doSave().then(()=>toast(DESKTOP?'Прое
 function exportJSON(){if(CHIEF)return;saveFile(`${P.name}.json`,JSON.stringify(P,null,1));}
 function importJSON(){if(CHIEF){guestMsg();return;}pickFile('.json',f=>f.text().then(t=>{try{const j=JSON.parse(t);if(!j.objects||!j.levels)throw new Error('не похоже на проект');mutate(()=>{P=migrate(j);SEL=null;});fit2D();toast('Проект открыт');}catch(e){toast('Ошибка: '+e.message);}}));}
 const MENUS={
-  file:{t:'Файл',items:[['💾 Скачать HTML-файл для шефа (без аккаунта Claude)','',makeChiefFile],['📤 Обновить версию для руководителя по ссылке артефакта','',shareToChief],['👁 Предпросмотр: как увидит руководитель','',()=>{location.hash='chief';location.reload();}],['↺ Вернуть исходный вариант автора','',chiefReset],['✕ Выйти из предпросмотра','',chiefExitPreview],'-',['📁 Проекты…','',projectsDlg],['＋ Новый проект…','',()=>askName('Название нового проекта','Новый проект',n=>createProject(n,false))],'-',['Сохранить','Ctrl+S',saveNow],['Сохранить копию в файл (.json)…','Ctrl+Shift+S',exportJSON],['Открыть проект (.json)…','Ctrl+O',importJSON],'-',['Сделать файл для гостя (.html)…','',makeGuestFile],['3D-демка для электромонтажа (.html)…','',make3DDemo],['📥 Загрузить правки руководителя / гостя (.json)…','',loadGuestEdits],'-',
+  file:{t:'Файл',items:[['💾 Сохранить мои изменения для автора (файл)','',()=>chiefSaveEdits()],['💾 Скачать HTML-файл для шефа (без аккаунта Claude)','',makeChiefFile],['📤 Обновить версию для руководителя по ссылке артефакта','',shareToChief],['👁 Предпросмотр: как увидит руководитель','',()=>{location.hash='chief';location.reload();}],['↺ Вернуть исходный вариант автора','',chiefReset],['✕ Выйти из предпросмотра','',chiefExitPreview],'-',['📁 Проекты…','',projectsDlg],['＋ Новый проект…','',()=>askName('Название нового проекта','Новый проект',n=>createProject(n,false))],'-',['Сохранить','Ctrl+S',saveNow],['Сохранить копию в файл (.json)…','Ctrl+Shift+S',exportJSON],['Открыть проект (.json)…','Ctrl+O',importJSON],'-',['Сделать файл для гостя (.html)…','',makeGuestFile],['3D-демка для электромонтажа (.html)…','',make3DDemo],['📥 Загрузить правки руководителя / гостя (.json)…','',loadGuestEdits],'-',
     ['Монтажная ведомость (.csv)','',()=>saveFile(`${P.name} — монтажная ведомость.csv`,'\ufeff'+projReport())],['Площади (.csv)','',()=>saveFile(`${P.name} — площади.csv`,'\ufeff'+areasCSV())],
-    ['Снимок 3D…','',()=>$('#bShot').click()],['Снимок плана…','',()=>$('#bPlanPng').click()],'-',
+    ['Скриншот 3D (картинка)…','',()=>$('#bShot').click()],['Скриншот плана (картинка)…','',()=>$('#bPlanPng').click()],'-',
     ['Загрузить пак проекторов…','',()=>{showTab('lib');pickFile('.json,.csv,.txt',f=>f.text().then(t=>importLib(t,f.name)));}]]},
   edit:{t:'Правка',items:[['Отменить','Ctrl+Z',undo],['Повторить','Ctrl+Shift+Z',redo],'-',['Копировать','Ctrl+C',copySel],['Вставить на то же место','Ctrl+V',pasteClip],['Дублировать','Ctrl+D',dupSel],['Удалить','Del',delSel],'-',
     ['Копию тащить: зажать Ctrl+Alt и тянуть','',null]]},
@@ -4283,7 +4283,7 @@ const MENUS={
   help:{t:'Справка',items:[['Руководство','F1',()=>openHelp('guide')],['Горячие клавиши','',()=>openHelp('keys')],['О модели из PDF','',()=>openHelp('pdf')]]},
 };
 function buildMenus(){
-  $('#menus').innerHTML=Object.entries(MENUS).map(([k,m])=>`<div class="menu" data-m="${k}"><button class="mb">${m.t}</button><div class="dd">${m.items.map((it,i)=>(CHIEF&&Array.isArray(it)&&(k==='file'&&(!/Снимок|руководител|автора/.test(it[0])||/Загрузить правки|Скачать HTML|Обновить версию/.test(it[0]))||k==='view'&&/Электрика|Документация|Подложку/.test(it[0])||k==='edit'&&/Удалить/.test(it[0]))||!CHIEF&&Array.isArray(it)&&/Вернуть исходный вариант автора|Выйти из предпросмотра/.test(it[0])||CHIEF&&Array.isArray(it)&&/Отправить руководителю|Предпросмотр/.test(it[0]))?'':(GUEST&&Array.isArray(it)&&/Проекты|Новый проект|для гостя|правки гостя|Открыть проект|копию в файл|пак проектор|ведомость|Площади \(/.test(it[0]))?'':it==='-'?'<div class="sep"></div>':it.h?`<div class="mh">${it.h}</div>`:
+  $('#menus').innerHTML=Object.entries(MENUS).map(([k,m])=>`<div class="menu" data-m="${k}"><button class="mb">${m.t}</button><div class="dd">${m.items.map((it,i)=>(!CHIEF&&Array.isArray(it)&&/Сохранить мои изменения/.test(it[0]))||(CHIEF&&Array.isArray(it)&&(k==='file'&&(!/Скриншот|руководител|автора/.test(it[0])||/Загрузить правки|Скачать HTML|Обновить версию/.test(it[0]))||k==='view'&&/Электрика|Документация|Подложку/.test(it[0])||k==='edit'&&/Удалить/.test(it[0]))||!CHIEF&&Array.isArray(it)&&/Вернуть исходный вариант автора|Выйти из предпросмотра/.test(it[0])||CHIEF&&Array.isArray(it)&&/Отправить руководителю|Предпросмотр/.test(it[0]))?'':(GUEST&&Array.isArray(it)&&/Проекты|Новый проект|для гостя|правки гостя|Открыть проект|копию в файл|пак проектор|ведомость|Площади \(/.test(it[0]))?'':it==='-'?'<div class="sep"></div>':it.h?`<div class="mh">${it.h}</div>`:
     `<button class="mi${it[3]&&it[3]()?' chk':''}" data-i="${i}" ${it[2]?'':'disabled'}><span>${it[0]}</span><kbd>${it[1]}</kbd></button>`).join('')}</div></div>`).join('');}
 let menuOpen=null;
 $('#menus').addEventListener('click',e=>{const mb=e.target.closest('.mb');if(mb){const m=mb.parentElement;const was=m.classList.contains('open');closeMenus();if(!was){buildMenus();const mm=$(`.menu[data-m="${m.dataset.m}"]`);mm.classList.add('open');menuOpen=m.dataset.m;}return;}
@@ -6050,7 +6050,7 @@ async function initCaps(localAt){
     const to=new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),10000));
     try{const u0=await claude.use('user');if(u0&&typeof u0.canEdit==='function'&&!(await u0.canEdit())){CURP='main';CHIEF=true;GUEST=true;}}catch(e){}
     /* руководитель (или предпросмотр владельца): только чтение снимка share/main, никаких записей в хранилище */
-    if(CHIEF){DBOK=true;let ok=false;try{ok=await Promise.race([chiefLoad(db),to]);}catch(e){}enterChief();if(!ok)toast('Снимок проекта из артефакта не загрузился — показана встроенная версия',6000);
+    if(CHIEF){DBOK=true;let ok=false;try{ok=await Promise.race([chiefLoad(db),to]);}catch(e){}enterChief();if(!ok)toast('Проект из артефакта не загрузился — показана встроенная версия',6000);
       try{restoreMedia();}catch(e){}$('#fSave').textContent=CHIEFPREV?'предпросмотр — ничего не сохраняется в проект':'режим для руководителя — изменения пробные, только в этом браузере';
       setInterval(chiefPull,60000);window.addEventListener('focus',()=>setTimeout(chiefPull,400));return;}
     let snap;try{snap=await Promise.race([db.doc('projects/'+CURP).get(),to]);if(CURP!=='main'&&(!snap.exists||!(snap.data()||{}).json)){CURP='main';snap=await Promise.race([db.doc('projects/main').get(),to]);}}catch(e){toast('⚠ Не удалось загрузить проект из артефакта. Чтобы не затереть его, сохранение выключено — обновите страницу',10000);$('#fSave').textContent='⚠ сохранение выключено — обновите страницу';return;}DBOK=true;
@@ -6122,7 +6122,7 @@ function chiefReset(){if(!CHIEF)return;try{localStorage.removeItem(chiefKey());}
 function chiefExitPreview(){location.hash='';location.reload();}
 async function shareToChief(){if(CHIEF)return;if(!DB||!DBOK){toast('Хранилище артефакта недоступно — снимок не отправлен',5000);return;}
   try{await flushSave();const t=Date.now();await dbPutBig('share/main',JSON.stringify(P),{savedAt:t,name:P.name});
-    toast('📤 Снимок для руководителя обновлён · '+new Date(t).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'. Дайте ему доступ «Просмотр» через «Поделиться»',7000);}catch(e){toast('Снимок не отправлен: '+(e.message||e),6000);}}
+    toast('📤 Версия для руководителя обновлён · '+new Date(t).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'. Дайте ему доступ «Просмотр» через «Поделиться»',7000);}catch(e){toast('Версия для руководителя не обновлена: '+(e.message||e),6000);}}
 function chiefBar(){if(!CHIEF)return;let b=document.getElementById('chiefBar');if(!b){b=document.createElement('div');b.id='chiefBar';b.className='chiefbar';$('header').appendChild(b);}
   const at=SHARE_AT?new Date(SHARE_AT).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
   b.innerHTML=`<span>${CHIEFPREV?'👁 Предпросмотр: так проект увидит руководитель. Здесь ничего не сохраняется в проект.':'👁 Версия для руководителя: можно менять оформление и проекторы. Чтобы передать изменения автору — «Сохранить мои изменения для автора» и отправьте файл.'}<i class="cbx">${at?` Версия автора от ${at}.`:''} Можно: оформление, проекторы, замеры, режимы Схема / Свет / Люксы.</i></span>${CHIEFNEW?'<button id="cbNew" class="pri">🔄 Есть новая версия от автора — загрузить (ваши пробные изменения сбросятся)</button>':''}${CHIEFPREV?'':'<button id="cbSave" class="pri">💾 Сохранить мои изменения для автора</button>'}<button id="cbReset">↺ Вернуть исходный вариант автора</button>${CHIEFPREV?'<button id="cbExit">✕ Выйти из предпросмотра</button>':''}`;
